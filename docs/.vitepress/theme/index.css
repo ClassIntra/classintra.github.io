@@ -23,10 +23,10 @@
 
 .VPNavBarTitle .title > span {
   display: inline-block;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1;
-  transform: translateY(4px);
+  transform: translateY(5px);
 }
 
 .vp-doc table {
