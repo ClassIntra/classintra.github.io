@@ -582,7 +582,7 @@ apps/counter/
 
 ### 3. icon.svg
 
-```svg
+```xml
 <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
   <rect x="8" y="8" width="48" height="48" rx="14" fill="#FF9500"/>
   <text x="32" y="42" font-family="Arial" font-size="28" font-weight="bold"

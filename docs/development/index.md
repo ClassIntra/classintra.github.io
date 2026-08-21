@@ -361,7 +361,10 @@ ClassIntra 使用 Vue 2.7（最后一个 Vue 2 版本），支持 Composition AP
 
 ## 下一步
 
-- [第三方应用开发](./third-party) - 完整应用开发指南
+- [第三方应用开发](./third-party) - 完整应用开发指南（含计数器完整示例）
+- [小组件开发](./widgets) - 桌面小组件、configSchema 配置表单
+- [插件开发](./plugins) - 联动插件、通信契约与握手协议
+- [主题开发](./themes) - 内置主题与扩展主题、动态色彩
 - [SDK 参考](./sdk) - 前后端核心 API
 - [CLI 工具](./cli) - 命令行参考
 - [调试技巧](./debugging) - 前后端调试方法

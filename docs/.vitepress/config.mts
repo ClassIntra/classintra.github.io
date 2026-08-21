@@ -9,7 +9,7 @@ export default defineConfig({
 
   head: [
     ['link', { rel: 'icon', href: '/logo.png' }],
-    ['meta', { name: 'theme-color', content: '#007AFF' }],
+    ['meta', { name: 'theme-color', content: '#0947FA' }],
     ['meta', { name: 'og:type', content: 'website' }],
     ['meta', { name: 'og:title', content: 'ClassIntra 文档' }],
     ['meta', { name: 'og:description', content: '校园内网 WebOS 平台 · 类 iOS 设计 · 横屏平板优化 · 局域网即可运行' }],
@@ -53,6 +53,9 @@ export default defineConfig({
         items: [
           { text: '简介', link: '/development/' },
           { text: '第三方应用开发', link: '/development/third-party' },
+          { text: '小组件开发', link: '/development/widgets' },
+          { text: '插件开发', link: '/development/plugins' },
+          { text: '主题开发', link: '/development/themes' },
           { text: 'SDK 参考', link: '/development/sdk' },
           { text: 'CLI 工具', link: '/development/cli' },
           { text: '调试技巧', link: '/development/debugging' },
@@ -108,6 +111,9 @@ export default defineConfig({
         items: [
           { text: '简介', link: '/development/' },
           { text: '第三方应用开发', link: '/development/third-party' },
+          { text: '小组件开发', link: '/development/widgets' },
+          { text: '插件开发', link: '/development/plugins' },
+          { text: '主题开发', link: '/development/themes' },
           { text: 'SDK 参考', link: '/development/sdk' },
           { text: 'CLI 工具', link: '/development/cli' },
           { text: '调试技巧', link: '/development/debugging' },
