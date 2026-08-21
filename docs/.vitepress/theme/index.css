@@ -14,16 +14,19 @@
 }
 
 .VPNavBarTitle .logo {
+  display: block;
   height: 34px;
   width: auto;
-  border-radius: 6px;
+  max-width: none;
+  flex: 0 0 auto;
 }
 
 .VPNavBarTitle .title > span {
   display: inline-block;
   font-size: 15px;
+  font-weight: 700;
   line-height: 1;
-  transform: translateY(1px);
+  transform: translateY(4px);
 }
 
 .vp-doc table {
