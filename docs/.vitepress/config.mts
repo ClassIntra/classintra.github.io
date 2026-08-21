@@ -17,7 +17,7 @@ export default defineConfig({
 
   themeConfig: {
     logo: '/logo.png',
-    siteTitle: 'ClassIntra 文档',
+    siteTitle: '文档',
 
     search: {
       provider: 'local',

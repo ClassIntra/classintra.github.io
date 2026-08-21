@@ -13,6 +13,13 @@
   --vp-code-line-height: 1.7;
 }
 
+/* 导航栏 logo：正方形，放大显示并保持比例 */
+.VPNavBarTitle .logo {
+  height: 28px;
+  width: 28px;
+  border-radius: 6px;
+}
+
 .vp-doc table {
   display: block;
   overflow-x: auto;
