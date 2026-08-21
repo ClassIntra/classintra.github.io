@@ -13,10 +13,10 @@
   --vp-code-line-height: 1.7;
 }
 
-/* 导航栏 logo：正方形，放大显示并保持比例 */
+/* 导航栏 logo：横向版，只设高度，宽度按比例自适应 */
 .VPNavBarTitle .logo {
   height: 28px;
-  width: 28px;
+  width: auto;
   border-radius: 6px;
 }
 
