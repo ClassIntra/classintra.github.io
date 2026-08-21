@@ -13,11 +13,17 @@
   --vp-code-line-height: 1.7;
 }
 
-/* 导航栏 logo：横向版，只设高度，宽度按比例自适应 */
 .VPNavBarTitle .logo {
-  height: 28px;
+  height: 34px;
   width: auto;
   border-radius: 6px;
+}
+
+.VPNavBarTitle .title > span {
+  display: inline-block;
+  font-size: 15px;
+  line-height: 1;
+  transform: translateY(1px);
 }
 
 .vp-doc table {
