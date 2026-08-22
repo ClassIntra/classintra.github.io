@@ -169,8 +169,8 @@ export default defineConfig({
     ],
 
     footer: {
-      message: '基于 <a href="https://github.com/ClassIntra/ClassIntra/blob/main/LICENSE">MIT 协议</a> 开源 · <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&amp;k=y_6ndZUGpNu6dTuvpI4U3NQDs5FtIzIx&amp;authKey=Tbq7hC6Ppe2r2WPKpvqLw1xnzjET5sfWBE45XjSvKOSJagX2WkkTx1Pat2EbqshZ&amp;noverify=0&amp;group_code=1074276021" target="_blank" rel="noreferrer">加入 QQ 群【ClassIntra 2026】</a>',
-      copyright: 'Copyright © 2024-present <a href="https://github.com/ClassIntra">ClassIntra</a>'
+      message: '基于 <a href="https://github.com/ClassIntra/ClassIntra/blob/main/LICENSE">MIT 协议</a> 开源 · <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&amp;k=y_6ndZUGpNu6dTuvpI4U3NQDs5FtIzIx&amp;authKey=Tbq7hC6Ppe2r2WPKpvqLw1xnzjET5sfWBE45XjSvKOSJagX2WkkTx1Pat2EbqshZ&amp;noverify=0&amp;group_code=1074276021" target="_blank" rel="noreferrer">加入 QQ 群【ClassIntra】</a>',
+      copyright: 'Copyright © 2026 <a href="https://github.com/ClassIntra">ClassIntra</a>'
     },
 
     outline: {

@@ -141,7 +141,7 @@ pnpm dev
 
 - 📌 **[GitHub Issues](https://github.com/ClassIntra/ClassIntra/issues)** — 提交 Bug 报告或功能建议
 - 💬 **[GitHub Discussions](https://github.com/ClassIntra/ClassIntra/discussions)** — 讨论与问答
-- 👥 **[加入 QQ 群【ClassIntra 2026】](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=y_6ndZUGpNu6dTuvpI4U3NQDs5FtIzIx&authKey=Tbq7hC6Ppe2r2WPKpvqLw1xnzjET5sfWBE45XjSvKOSJagX2WkkTx1Pat2EbqshZ&noverify=0&group_code=1074276021)** — 交流使用问题与项目动态
+- 👥 **[加入 QQ 群【ClassIntra】](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=y_6ndZUGpNu6dTuvpI4U3NQDs5FtIzIx&authKey=Tbq7hC6Ppe2r2WPKpvqLw1xnzjET5sfWBE45XjSvKOSJagX2WkkTx1Pat2EbqshZ&noverify=0&group_code=1074276021)** — 交流使用问题与项目动态
 - 📖 **[官方文档](/quick-start/)** — 完整使用与开发指南
 - 🔧 **[部署文档](https://github.com/ClassIntra/ClassIntra/blob/main/DEPLOY.md)** — 多机中继、Tailscale 组网、HTTPS 配置
 
