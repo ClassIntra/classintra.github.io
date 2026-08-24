@@ -53,6 +53,7 @@ export default defineConfig({
         items: [
           { text: '简介', link: '/development/' },
           { text: '第三方应用开发', link: '/development/third-party' },
+          { text: '市场应用生命周期', link: '/development/market-apps' },
           { text: '小组件开发', link: '/development/widgets' },
           { text: '插件开发', link: '/development/plugins' },
           { text: '主题开发', link: '/development/themes' },
