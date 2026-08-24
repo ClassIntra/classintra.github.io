@@ -15,6 +15,17 @@ ClassIntra 市场应用是独立于官方内置应用的第三方应用包。班
 - [ClassIntra 市场仓库](https://github.com/ClassIntra/market)
 - [五子棋应用目录](https://github.com/ClassIntra/market/tree/main/apps/gomoku)
 
+## 用户如何获取应用
+
+用户不需要克隆或下载整个 `market` 仓库，也不需要 ClassIntra 官方提供一台公共服务器。运行 ClassIntra 的班级服务器会直接读取 GitHub Raw 上的 catalog，并按应用文件清单逐个下载：
+
+```text
+https://raw.githubusercontent.com/ClassIntra/market/main/index.json
+https://raw.githubusercontent.com/ClassIntra/market/main/apps/gomoku/manifest.json
+```
+
+应用文件下载到班级服务器的本地运行时目录后，前端和后端都从本地加载。GitHub 只承担公开文件托管和版本来源，ClassIntra 负责安装、缓存、更新和卸载。
+
 ## 安装流程
 
 1. 市场目录从 Local 或 GitHub source 读取 `index.json`。
