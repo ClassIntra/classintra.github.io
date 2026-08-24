@@ -35,7 +35,15 @@ export default defineConfig({
 
     nav: [
       { text: '首页', link: '/' },
-      { text: '快速开始', link: '/quick-start/' },
+      {
+        text: '快速开始',
+        items: [
+          { text: '简介', link: '/quick-start/' },
+          { text: '安装', link: '/quick-start/installation' },
+          { text: '基本使用', link: '/quick-start/basic-usage' },
+          { text: '账号与 API 快速开始', link: '/quick-start/account-and-api' }
+        ]
+      },
       {
         text: '核心概念',
         items: [
@@ -60,6 +68,7 @@ export default defineConfig({
           { text: 'SDK 参考', link: '/development/sdk' },
           { text: 'CLI 工具', link: '/development/cli' },
           { text: '调试技巧', link: '/development/debugging' },
+          { text: '联机五子棋开发', link: '/development/gomoku-online' },
         ]
       },
       {
@@ -91,6 +100,7 @@ export default defineConfig({
           { text: '简介', link: '/quick-start/' },
           { text: '安装', link: '/quick-start/installation' },
           { text: '基本使用', link: '/quick-start/basic-usage' },
+          { text: '账号与 API 快速开始', link: '/quick-start/account-and-api' },
         ]
       },
       {
@@ -118,6 +128,7 @@ export default defineConfig({
           { text: 'SDK 参考', link: '/development/sdk' },
           { text: 'CLI 工具', link: '/development/cli' },
           { text: '调试技巧', link: '/development/debugging' },
+          { text: '联机五子棋开发', link: '/development/gomoku-online' },
         ]
       },
       {
