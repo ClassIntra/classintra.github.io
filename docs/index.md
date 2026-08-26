@@ -73,6 +73,12 @@ features:
 | 📡 API 参考 | 服务端 API、前端 API、类型定义 | [进入](/api/) |
 | 🎨 UI & 主题 | 组件库、主题定制、图标系统 | [进入](/ui/) |
 
+## 宣传片
+
+<iframe src="https://player.bilibili.com/player.html?bvid=BV1EMhG65Eky&page=1&danmaku=0" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true" style="display:block;width:100%;aspect-ratio:16/9;border:0;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.12);"></iframe>
+
+> 或前往 B 站观看：[【ClassIntra —— 一款简单易用的校园内网 WebOS 平台】](https://www.bilibili.com/video/BV1EMhG65Eky/)
+
 ## 为什么选择 ClassIntra？
 
 ClassIntra 为班级教室场景而生 —— 一台服务器 + 一台平板 = 完整的班级数字平台。无需外网，局域网即可运行。基于 **Vue 2.7 + Vite 5** 构建，采用类 iOS 设计语言，专为横屏平板（960×600）优化，同时适配桌面浏览器。
