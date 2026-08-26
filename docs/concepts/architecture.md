@@ -394,7 +394,7 @@ express app.use(mountPath, router)
 
 ## Chrome 80 兼容约束
 
-详见 `ClassIntra/docs/chrome-80-compat.md`。核心约束如下表：
+详见 [Chrome 80 兼容](/development/chrome-80-compat)。核心约束如下表：
 
 | 禁用语法 | 原因 | 替代方案 |
 |----------|------|----------|

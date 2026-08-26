@@ -69,6 +69,8 @@ export default defineConfig({
           { text: 'CLI 工具', link: '/development/cli' },
           { text: '调试技巧', link: '/development/debugging' },
           { text: '联机五子棋开发', link: '/development/gomoku-online' },
+          { text: '外部系统集成', link: '/development/integration' },
+          { text: 'Chrome 80 兼容', link: '/development/chrome-80-compat' },
         ]
       },
       {
@@ -79,6 +81,7 @@ export default defineConfig({
           { text: '教育场景', link: '/deployment/education' },
           { text: '配置项', link: '/deployment/configuration' },
           { text: '监控运维', link: '/deployment/monitoring' },
+          { text: '数据库迁移', link: '/deployment/database-migration' },
         ]
       },
       {
@@ -129,6 +132,8 @@ export default defineConfig({
           { text: 'CLI 工具', link: '/development/cli' },
           { text: '调试技巧', link: '/development/debugging' },
           { text: '联机五子棋开发', link: '/development/gomoku-online' },
+          { text: '外部系统集成', link: '/development/integration' },
+          { text: 'Chrome 80 兼容', link: '/development/chrome-80-compat' },
         ]
       },
       {
@@ -140,6 +145,7 @@ export default defineConfig({
           { text: '教育场景', link: '/deployment/education' },
           { text: '配置项', link: '/deployment/configuration' },
           { text: '监控运维', link: '/deployment/monitoring' },
+          { text: '数据库迁移', link: '/deployment/database-migration' },
         ]
       },
       {

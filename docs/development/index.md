@@ -233,7 +233,7 @@ ClassIntra 有严格的代码风格约定，**所有新代码必须遵守**。
 
 ### Chrome 80 兼容
 
-ClassIntra 必须兼容 Chrome 80+（教育终端常见版本），详见 [Chrome 80 兼容](https://github.com/ClassIntra/ClassIntra/blob/main/docs/chrome-80-compat.md)。
+ClassIntra 必须兼容 Chrome 80+（教育终端常见版本），详见 [Chrome 80 兼容](./chrome-80-compat)。
 
 | 类别 | 禁用 | 替代 |
 |------|------|------|
@@ -369,4 +369,4 @@ ClassIntra 使用 Vue 2.7（最后一个 Vue 2 版本），支持 Composition AP
 - [CLI 工具](./cli) - 命令行参考
 - [调试技巧](./debugging) - 前后端调试方法
 - [核心概念 - 架构概览](/concepts/) - 整体架构
-- [Chrome 80 兼容](https://github.com/ClassIntra/ClassIntra/blob/main/docs/chrome-80-compat.md) - 兼容性完整文档
+- [Chrome 80 兼容](./chrome-80-compat) - 兼容性完整文档
