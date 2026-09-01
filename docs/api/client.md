@@ -605,7 +605,7 @@ wsManager.connect('ws://localhost:5001/ws');
 :::
 
 ::: warning HTTP 长轮询回退
-当浏览器不支持 WebSocket（如极旧环境）或 WS 连接多次失败时，会自动切换到 HTTP 长轮询模式（`_transport = 'poll'`），通过定时 `GET /api/events/poll?since=<ts>` 拉取事件。
+当浏览器不支持 WebSocket（如腾讯 X5、TBS 或旧版 Android WebView）或 WS 连接多次失败时，会自动切换到 HTTP 长轮询模式（`_transport = 'poll'`），通过 `POST /api/chat/poll/register` 和 `GET /api/chat/poll?since=<ts>` 拉取聊天事件。第三方应用应使用 `context.realtime` 访问独立的 `/api/realtime` 通道。
 :::
 
 ### send

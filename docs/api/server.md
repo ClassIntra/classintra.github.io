@@ -437,6 +437,30 @@ CDN 代理仅允许白名单域名（默认包含常见 CDN 如 `cdn.jsdelivr.ne
 
 应用管控相关概念详见 [核心概念 — 应用管控](/concepts/app-control)。
 
+## 全局实时 API（/api/realtime）
+
+源码：`server/src/routes/realtime.js`、`server/src/utils/realtime-bus.js`
+
+该通道面向第三方市场应用和插件，使用 JWT 鉴权的 HTTP 长轮询，不依赖 Chat 应用或 WebSocket。
+
+| 方法 | 路径 | 说明 | 认证 |
+| --- | --- | --- | --- |
+| POST | `/api/realtime/poll/register` | 注册当前用户的实时轮询通道 | 是 |
+| GET | `/api/realtime/poll?since=<timestamp>` | 获取指定时间后的事件，最长等待 25 秒 | 是 |
+| POST | `/api/realtime/publish` | 发布扩展事件 | 是 |
+| POST | `/api/realtime/poll/unregister` | 注销实时轮询通道 | 是 |
+
+市场应用前端优先使用 `context.realtime`，例如：
+
+```javascript
+var stop = context.realtime.subscribe('my-app.updated', function(payload) {
+  console.log('收到更新:', payload);
+});
+
+context.realtime.publish('my-app.updated', { id: 1 }, context.appName);
+stop();
+```
+
 ## 集成 API（/api/integrations）
 
 源码：`server/src/routes/integrations.js`

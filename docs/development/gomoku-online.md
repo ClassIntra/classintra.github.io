@@ -1,12 +1,12 @@
 ---
 title: 联机五子棋开发
-description: ClassIntra Gomoku 联机五子棋完整开发文档：联机模型、房间 HTTP API、fetch 示例、WebSocket 事件、规则与错误恢复、调试清单。
+description: ClassIntra Gomoku 联机五子棋完整开发文档：联机模型、房间 HTTP API、全局 HTTP 实时事件、WebSocket 兼容协议、规则与错误恢复、调试清单。
 outline: [2, 3]
 ---
 
 # 联机五子棋开发
 
-本文档对应 `market-apps/gomoku` 的真实路由、SQLite 状态和聊天 WebSocket 房间事件。示例使用占位 Token，不包含真实凭据。
+本文档对应 `market-apps/gomoku` 的真实路由、SQLite 状态和实时事件。示例使用占位 Token，不包含真实凭据。当前五子棋前端优先使用房间 HTTP API 与全局 HTTP 长轮询，旧 WebSocket 房间事件仅作为兼容协议保留。
 
 ## 联机模型
 
@@ -100,7 +100,28 @@ var room = await gomokuRequest('/api/gomoku/rooms', {
 await gomokuRequest('/api/gomoku/rooms/' + room.roomCode + '/join', { method: 'POST' })
 ```
 
-## WebSocket 房间同步
+## 全局 HTTP 实时同步
+
+五子棋市场应用应通过市场应用上下文中的 `context.realtime` 接入全局实时通道，不要自行创建 `WebSocket`。该通道不依赖 Chat 应用，腾讯 X5、TBS 和旧版 Android WebView 也可以使用。
+
+```javascript
+var unsubscribe = context.realtime.subscribe('gomoku.room.changed', function(message) {
+  if (message.roomCode === roomCode) renderState(message.state);
+});
+
+context.realtime.publish('gomoku.room.changed', {
+  roomCode: roomCode,
+  state: state
+}, context.appName);
+
+unsubscribe();
+```
+
+实时接口包括 `connect()`、`subscribe(event, handler)`、`publish(event, payload, appName)`、`disconnect()` 和 `isReady()`。底层接口为 `/api/realtime/poll/register`、`/api/realtime/poll`、`/api/realtime/publish` 和 `/api/realtime/poll/unregister`。
+
+五子棋的创建、加入、观战、落子、重开和离开都使用 `/api/gomoku/rooms/...` HTTP API。HTTP 响应是最终状态来源，事件丢失时重新 GET 房间即可恢复。
+
+## WebSocket 房间同步（兼容协议）
 
 先按 [账号与 API 教程](/quick-start/account-and-api) 连接 `ws://localhost:10001`，发送 `connect` 完成认证，再订阅房间：
 
@@ -134,7 +155,7 @@ socket.send(JSON.stringify({ type: 'gomoku_unsubscribe', room_code: ROOM_CODE })
 | `gomoku_move_rejected` | 房间不存在、非成员、观战者、回合不符或坐标非法 |
 | `gomoku_game_continued` | 收到继续对局操作后的状态 |
 
-房间状态以 HTTP GET 为最终恢复来源。WebSocket 断线重连后应重新认证、订阅，并调用 GET 防止漏事件。
+房间状态以 HTTP GET 为最终恢复来源。旧版 WebSocket 客户端仍可重新认证、订阅并接收房间事件，但新市场应用不应依赖该协议。
 
 ## 规则与错误恢复
 
@@ -156,7 +177,7 @@ socket.send(JSON.stringify({ type: 'gomoku_unsubscribe', room_code: ROOM_CODE })
 ## 调试清单
 
 - 确认市场应用已安装且 `/api/gomoku` 已挂载。
-- 确认账号 Token 未过期，WebSocket 首条消息中的 `user_id` 与 Token 一致。
+- 确认账号 Token 未过期，HTTP 实时请求携带 `Authorization: Bearer <TOKEN>`。
 - 检查 `server/src/migrations/004_add_gomoku_rooms.js` 已运行。
 - 使用两个不同账号验证黑棋、白棋和观战角色。
 - 分别验证 15×15、19×19、21×21 坐标边界。

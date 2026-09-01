@@ -157,6 +157,30 @@ bus.off('user:login', handler);
 单个 handler 抛错不会影响其他 handler，错误通过 `error:handler` 事件报告。可以订阅 `error:handler` 进行统一错误处理。
 :::
 
+### Realtime
+
+第三方应用通过 `context.realtime` 使用全局 HTTP 长轮询实时事件，不依赖 Chat 应用，也不要求浏览器支持 WebSocket，适合腾讯 X5、TBS 和旧版 Android WebView。
+
+| 方法 | 签名 | 说明 |
+|------|------|------|
+| `connect` | `() => void` | 注册当前用户的实时通道 |
+| `on` / `off` | `(event, handler)` | 监听或取消底层事件 |
+| `subscribe` | `(event, handler) => function` | 按事件名订阅并返回取消函数 |
+| `publish` | `(event, payload, appName) => Promise` | 发布扩展事件 |
+| `disconnect` | `() => void` | 注销实时通道 |
+| `isReady` | `() => boolean` | 检查连接状态 |
+
+```javascript
+var stop = context.realtime.subscribe('my-app.updated', function(payload) {
+  console.log('收到扩展事件:', payload);
+});
+
+context.realtime.publish('my-app.updated', { id: 1 }, context.appName);
+stop();
+```
+
+事件名最多 80 个字符，只允许字母、数字、`.`、`_`、`:` 和 `-`。扩展事件包含 `app_name`、`event`、`payload`、`sender_id` 和 `created_at`。
+
 #### 内置事件名
 
 | 事件名 | 触发时机 | 参数 |

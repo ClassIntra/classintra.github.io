@@ -3,9 +3,9 @@ title: WebSocket 通信
 description: ClassIntra WebSocket 通信系统，包含连接流程（URL、JWT 鉴权、心跳、重连）、消息类型表格（public/private/group/broadcast）、中继 Relay 系统架构、跨班级消息同步机制、前端 WebSocket 客户端（utils/websocket.js）以及消息速率限制。
 ---
 
-# WebSocket 通信
+# 实时通信
 
-ClassIntra 的即时通讯、在线状态、实时通知等功能基于 WebSocket 实现。后端 `ws/chat-server.js` 负责连接管理、JWT 鉴权、消息路由、班级群权限校验，并可选启用 Relay 中继实现跨班级（跨服务器）消息同步。
+ClassIntra 的实时通信同时支持 WebSocket 和 HTTP 长轮询。现代浏览器优先使用 WebSocket；腾讯 X5、TBS、旧版 Android WebView 或 WebSocket 握手失败时使用 HTTP。后端 `ws/chat-server.js` 负责聊天连接，`realtime-bus.js` 提供不依赖 Chat 应用的第三方扩展实时事件通道。
 
 源码位置：`server/src/ws/chat-server.js`、`client/src/utils/websocket.js`、`server/src/utils/relay-bus.js`
 
@@ -72,6 +72,21 @@ reconnectAttempts < maxReconnectAttempts ?
 ::: tip HTTP 长轮询回退
 当 WebSocket 不可用（浏览器不支持或重连超过 10 次）时，`WebSocketManager` 自动切换到 `_transport = 'poll'` 模式，通过 HTTP 长轮询保持消息收发能力。这确保在严格受限网络环境下仍能使用聊天功能。
 :::
+
+## 第三方扩展 HTTP 通道
+
+市场应用通过 `context.realtime` 使用全局 HTTP 实时事件，不应自行调用 `new WebSocket()`：
+
+```javascript
+var stop = context.realtime.subscribe('plugin.updated', function(payload) {
+  console.log('扩展更新:', payload);
+});
+
+context.realtime.publish('plugin.updated', { version: '1.0.1' }, context.appName);
+stop();
+```
+
+该通道的接口位于 `/api/realtime`，需要 JWT 鉴权。扩展事件与 Chat 应用解耦，即使 Chat 应用未启用，第三方扩展仍可使用 HTTP 实时通信。
 
 ## 消息类型表格
 

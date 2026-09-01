@@ -13,9 +13,9 @@ ClassIntra 校园内网 WebOS 提供两套互补的 API，分别面向**前端�
 | 类型 | 协议 / 形态 | 运行位置 | 主要用途 |
 |------|------------|----------|----------|
 | 前端 API | ES Module（`client/src/core/`） | 浏览器（Vue 2.7 运行时） | 服务编排、主题切换、事件总线、热键、全局搜索、持久化存储 |
-| 服务端 API | HTTP + WebSocket | ClassIntra Server（默认 `:5001`） | 认证、用户、管理、系统、资源、CDN 代理、集成、等级、初始化 |
+| 服务端 API | HTTP + WebSocket / HTTP 长轮询 | ClassIntra Server（默认 `:9001`） | 认证、用户、管理、系统、资源、CDN 代理、集成、等级、初始化与实时事件 |
 | HTTP 工具 | Axios 封装（`utils/api.js`） | 浏览器 | 统一请求拦截、Token 注入、401 自动跳转、断网保护 |
-| WebSocket 客户端 | 原生 WebSocket + HTTP 长轮询回退 | 浏览器 | 实时聊天、通知推送、心跳保活 |
+| 实时客户端 | WebSocket + HTTP 长轮询 | 浏览器 | 实时聊天、第三方扩展事件、通知推送 |
 
 ::: tip 何时用哪一套
 - 在前端代码中调用核心模块（事件总线、主题切换、热键注册） → 使用[前端 API](./client)
