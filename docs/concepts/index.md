@@ -116,7 +116,7 @@ ClassIntra/
 │   └── integration/            # 集成管理后台 UI
 ├── themes/                     # 主题包（light / dark）
 ├── theme-extensions/           # 扩展主题（material-you）
-├── plugins/                    # 插件系统（campusbili-bridge）
+├── plugins/                    # 插件运行时目录（源码维护于 market 仓库，如 campusbili-bridge）
 ├── docs/                       # 项目内文档
 └── Resources/                  # 静态资源（图标、壁纸）
 ```

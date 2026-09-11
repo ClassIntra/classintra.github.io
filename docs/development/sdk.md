@@ -1,11 +1,226 @@
 ---
 title: SDK 参考
-description: ClassIntra SDK 参考文档，覆盖前端核心 API（ServiceRegistry、ThemeEngine、EventBus、HotkeyManager、SearchRegistry、PersistenceStore）、后端 API（路由挂载、中间件、数据库）与集成 API（postMessage Bridge、Webhook）。
+description: ClassIntra SDK 参考文档。含市场应用运行时 context.* API（app / data / ui / system / device / theme / router）、前端核心 API（ServiceRegistry、ThemeEngine、EventBus、Realtime、HotkeyManager、SearchRegistry、PersistenceStore）、后端 API 与集成 API。
 ---
 
 # SDK 参考
 
-本页面列出 ClassIntra 前后端的核心 API，便于第三方应用开发者查阅。所有 API 均符合 [代码风格约定](./#代码风格约定)（`var` / `function` / Options API）。
+本页面列出 ClassIntra 的全部公开 API。按读者分两部分：
+
+- **市场应用运行时 API（`context.*`）** —— 第三方开发者主要用这一部分，见 [运行时 context](#运行时-context)。
+- **前端核心 API** —— 官方内置应用使用（`getServiceRegistry()` 等），见 [前端核心 API](#前端核心-api)。
+
+所有 API 均符合 [代码风格约定](./#代码风格约定)（`var` / `function` / Options API）。
+
+---
+
+## 运行时 context
+
+市场应用的 `mount(container, context)` 第二个参数是 `context`。它按能力域分层，与 manifest 的 `capabilities` 字段一一对应。
+
+```javascript
+window.ClassIntraMarket.define({
+  name: 'my-app',
+  mount: function (container, context) { /* ... */ },
+  unmount: function (container) { /* ... */ }
+});
+```
+
+::: warning 全部返回原生 DOM，不返回 Vue 组件
+第三方不过 Vite 构建，拿不到 `@vue/compiler`。`context.ui.*` 返回的是 `HTMLElement`，直接 `appendChild`。这保证了零构建步骤。
+:::
+
+### `context.app`
+
+| 成员 | 签名 | 说明 |
+|---|---|---|
+| `appName` | `string` | 当前应用名（等于 manifest 的 `name`） |
+| `onDestroy` | `(fn) => void` | 注册卸载回调，按注册**逆序**执行 |
+| `getConfig` | `() => Promise<object>` | 读取应用配置（服务端存储） |
+| `setConfig` | `(patch) => Promise<object>` | 合并写入应用配置 |
+
+```javascript
+var off = context.app.onDestroy(function () {
+  // 这里回收资源
+});
+```
+
+`onDestroy` 是**唯一的回收入口**。宿主不保证在其他时机清理你的资源。
+
+### `context.data`
+
+| 成员 | 签名 | 说明 |
+|---|---|---|
+| `get` | `(url, params?) => Promise<data>` | HTTP GET，已带鉴权与错误归一 |
+| `post` | `(url, body?) => Promise<data>` | HTTP POST，JSON body |
+| `realtime` | `object` | 实时通道，见下 |
+| `storage` | `object` | 命名空间存储，见下 |
+
+#### `context.data.realtime`
+
+::: danger 禁止直接使用 `new WebSocket(...)`
+腾讯 X5/TBS 与旧版 Android WebView 的长连接会静默断开且不触发 `close`。ClassIntra 统一封装为 HTTP 长轮询，**必须**通过此通道收实时事件。
+:::
+
+| 方法 | 签名 | 说明 |
+|---|---|---|
+| `connect` | `() => void` | 注册当前用户的实时通道 |
+| `disconnect` | `() => void` | 注销实时通道 |
+| `subscribe` | `(event, handler) => function` | 订阅事件，返回取消函数 |
+| `publish` | `(event, payload, appName) => Promise` | 发布扩展事件 |
+| `isReady` | `() => boolean` | 连接状态 |
+
+```javascript
+var stop = context.data.realtime.subscribe('my-app.updated', function (payload) {
+  console.log('收到:', payload);
+});
+
+context.data.realtime.publish('my-app.updated', { id: 1 }, context.appName);
+stop();
+```
+
+事件名限制：最多 80 字符，只允许字母、数字、`.`、`_`、`:`、`-`。
+
+扩展事件负载结构：
+
+```json
+{
+  "app_name": "my-app",
+  "event": "my-app.updated",
+  "payload": { "id": 1 },
+  "sender_id": "999999",
+  "created_at": 1757483344000
+}
+```
+
+#### `context.data.storage`
+
+命名空间化的持久存储。**比裸 `localStorage` 更推荐**——卸载时会被运行时自动清理。
+
+| 方法 | 签名 | 说明 |
+|---|---|---|
+| `get` | `(key, fallback?) => any` | 读取 |
+| `set` | `(key, value) => void` | 写入（自动 JSON 序列化） |
+| `remove` | `(key) => void` | 删除 |
+| `keys` | `() => string[]` | 列出本应用全部键 |
+
+```javascript
+context.data.storage.set('settings', { theme: 'auto' });
+var cfg = context.data.storage.get('settings', {});
+```
+
+若必须直接用 `localStorage`，键名前缀**必须**是 `ci:app:<name>:`。
+
+### `context.ui`
+
+全部返回 `HTMLElement`。
+
+| 方法 | 签名 | 说明 |
+|---|---|---|
+| `toast` | `(message, options?) => void` | 轻提示，自动消失 |
+| `modal` | `(options) => object` | 模态框，返回 `{ el, close, onClose }` |
+| `sheet` | `(options) => object` | 底部抽屉，返回结构同 `modal` |
+
+```javascript
+context.ui.toast('已保存');
+
+var m = context.ui.modal({
+  title: '确认删除',
+  content: '删除后不可恢复。',
+  actions: [
+    { label: '取消', style: 'plain', onClick: function () { m.close(); } },
+    { label: '删除', style: 'destructive', onClick: function () { doDelete(); m.close(); } }
+  ]
+});
+```
+
+`options.actions[].style` 取值：`default` / `plain` / `destructive`。
+
+样式已由 AppShell 注入的令牌控制，**不要**给返回的元素覆盖颜色或圆角。
+
+### `context.system`
+
+| 方法 | 签名 | 能力 |
+|---|---|---|
+| `notify` | `(title, body) => Promise` | `system.notification` |
+| `clipboard.write` | `(text) => Promise` | `system.clipboard` |
+| `clipboard.read` | `() => Promise<string>` | `system.clipboard` |
+| `share` | `(data) => Promise` | `system.share` |
+| `navigate` | `(path) => void` | `system.navigate` |
+
+`clipboard.read` 在部分浏览器需要用户手势触发，可能被拒绝。
+
+### `context.device`
+
+| 方法 | 签名 | 能力 | 说明 |
+|---|---|---|---|
+| `info` | `() => object` | `device.info` | 返回 `{ platform, viewport, dpr, ua }` |
+| `filePicker` | `(options?) => Promise<File[]>` | `device.filePicker` | 文件选择 |
+| `camera` | `(options?) => Promise<Blob>` | `device.camera` | 拍照 |
+
+`filePicker` 的 `options.accept` 为 MIME 或扩展名列表。
+
+### `context.theme`
+
+| 成员 | 签名 | 说明 |
+|---|---|---|
+| `current` | `string` | 当前主题 id（`light` / `dark` / 扩展主题） |
+| `getToken` | `(name) => string` | 读取令牌值（如 `'color-primary'`，不带 `--ci-` 前缀） |
+| `subscribe` | `(fn) => function` | 订阅主题变化，返回取消函数 |
+
+```javascript
+var stop = context.theme.subscribe(function (themeId) {
+  console.log('主题切换为', themeId);
+});
+```
+
+### `context.router`
+
+| 方法 | 签名 | 说明 |
+|---|---|---|
+| `push` | `(path) => void` | 跳转并压入历史 |
+| `replace` | `(path) => void` | 替换当前历史项 |
+| `back` | `() => void` | 返回 |
+
+跨应用跳转请用 `context.router` 而非直接改 `location.href`——后者会整页重载，丢失所有应用状态。
+
+### 完整回收示例
+
+```javascript
+window.ClassIntraMarket.define({
+  name: 'my-app',
+  mount: function (container, context) {
+    var root = document.createElement('div');
+    container.appendChild(root);
+
+    var timer = setInterval(tick, 1000);
+    var onResize = function () { layout(); };
+    window.addEventListener('resize', onResize);
+
+    var stopRealtime = context.data.realtime.subscribe('my-app.updated', render);
+    var stopTheme = context.theme.subscribe(applyTheme);
+
+    function tick() { /* ... */ }
+    function layout() { /* ... */ }
+    function render(p) { /* ... */ }
+    function applyTheme() { /* ... */ }
+
+    /* 逆序回收，全部资源 */
+    context.app.onDestroy(function () { stopTheme(); });
+    context.app.onDestroy(function () { stopRealtime(); });
+    context.app.onDestroy(function () { window.removeEventListener('resize', onResize); });
+    context.app.onDestroy(function () { clearInterval(timer); });
+    context.app.onDestroy(function () {
+      root.parentNode && root.parentNode.removeChild(root);
+    });
+  },
+  unmount: function (container) {
+    container.replaceChildren();
+  }
+});
+```
+
+---
 
 ## 前端核心 API
 
@@ -751,7 +966,8 @@ module.exports = router;
 
 ## 下一步
 
-- [第三方应用开发](./third-party) - 完整应用开发流程
+- [第三方应用开发](./third-party) - 完整应用开发流程与兼容红线
+- [市场应用生命周期](./market-apps) - 安装、更新、卸载、班级管控
 - [调试技巧](./debugging) - 前后端调试方法
 - [CLI 工具](./cli) - 命令行参考
 - [API 参考](/api/) - 服务端 REST API 文档

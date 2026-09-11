@@ -397,6 +397,61 @@ module.exports = {
 - **不修改现有列**：使用新迁移加列（`ALTER TABLE ... ADD COLUMN`），避免数据迁移
 :::
 
+## 质量门与生态工具
+
+ClassIntra 提供一组验证脚本，覆盖模块化、动效规范、manifest schema 与市场应用审查。
+
+### 质量门
+
+| 命令 | 脚本 | 检查内容 |
+|------|------|---------|
+| `pnpm verify:modules` | `scripts/modularity-verify.js` | 删除式自测：无插件 / 无可选业务模块时仍能 build + boot + 冒烟 |
+| `pnpm verify:motion` | `scripts/motion-verify.js` | 动效与视觉规范（E1–E8，扫描 `client/src` + `apps/`） |
+| `pnpm verify:schema` | `scripts/schema-verify.mjs` | manifest schema 前后端一致性 + 42 项断言 |
+| `pnpm verify:all` | — | 依次跑上述三项 |
+
+```bash
+# 一次跑完全部质量门（提交前建议执行）
+pnpm verify:all
+```
+
+### 市场应用审查
+
+```bash
+# 审查单个市场应用
+pnpm review:market market-apps/gomoku
+
+# 机器可读输出（CI 集成用）
+node scripts/market-review.mjs market-apps/gomoku --json
+```
+
+按五组检查：**A** manifest 合规 · **B** Chrome 80 语法 · **C** CSS 兼容 · **D** 危险 API · **E** 资源回收。
+存在错误时退出码为 1，可直接用于 CI 门禁。
+
+### 应用脚手架
+
+```bash
+# 生成市场应用（纯 JS，第三方分发）
+pnpm create:app my-tool --label "我的工具"
+
+# 带后端路由与建表 SQL
+pnpm create:app my-tool --label "我的工具" --with-backend
+
+# 生成官方内置应用（.vue，进 apps/）
+pnpm create:app my-app --label "我的应用" --kind official --dir apps
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--label <名称>` | 显示名称（默认由应用名推导） |
+| `--dir <路径>` | 输出目录（默认 `market-apps/`） |
+| `--kind <类型>` | `market`（默认）或 `official` |
+| `--with-backend` | 生成后端路由、建表 SQL 与后端 README |
+| `--color <hex>` | 主题色（默认 `#007AFF`） |
+| `--force` | 目标目录已存在时覆盖 |
+
+生成的模板本身就是「正确示例」——已预置 ES5 语法、`--ci-*` 令牌消费、`context.app.onDestroy` 四类资源回收，可直接通过 `review:market` 审查（0 错误 0 警告）。
+
 ## 常用组合命令
 
 ### 一键开发环境

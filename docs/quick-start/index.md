@@ -108,6 +108,10 @@ pnpm install
 
 此命令会安装 `client`、`server`、`apps/*`、`plugins/*`、`shared` 所有 workspace 的依赖。项目根目录 `.npmrc` 已配置 `build_from_source=false`，优先使用预编译包避免 `better-sqlite3` 等原生模块在本机工具链缺失时编译失败。
 
+::: tip 插件目录
+`plugins/` 不属于主仓库：新克隆的仓库没有该目录，需要时从 [market 仓库](https://github.com/ClassIntra/market) 的 `plugins/` 目录复制插件到本地 `plugins/` 后再执行 `pnpm install`。未放置插件时安装命令会正常跳过。
+:::
+
 ### 3. 配置环境变量
 
 ```bash

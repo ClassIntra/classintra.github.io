@@ -98,7 +98,7 @@ ClassIntra/
 │       ├── errors.js        # 错误码
 │       ├── manifest-schema.js    # manifest 校验
 │       └── theme-tokens.js       # 主题 Token
-├── plugins/                 # 插件（如 campusbili-bridge）
+├── plugins/                 # 插件运行时目录（源码维护于 market 仓库，如 campusbili-bridge）
 ├── theme-extensions/        # 主题扩展（material-you）
 ├── themes/                  # 内置主题（dark / light）
 ├── Resources/               # 用户管理的静态资源
@@ -123,7 +123,7 @@ ClassIntra/
 | `server` | `server/` | 后端，Express + better-sqlite3 + ws |
 | `client` | `client/` | 前端，Vue 2.7 + Vite 5 + Vuex |
 | `apps/*` | `apps/` | 应用包，每个应用一个目录 |
-| `plugins/*` | `plugins/` | 插件包 |
+| `plugins/*` | `plugins/` | 插件包（运行时目录，源码在 market 仓库） |
 | `shared` | `shared/` | 前后端共享代码 |
 
 ::: tip workspace 链接

@@ -7,7 +7,7 @@ description: ClassIntra 插件开发指南，覆盖 plugins 目录结构、manif
 
 插件（Plugin）是 ClassIntra 与外部系统联动的标准化扩展机制。与普通应用不同，插件不提供桌面图标和独立页面，而是通过**通信契约**将外部系统（如视频站、第三方平台）接入 ClassIntra。
 
-源码位置：`plugins/`、`client/src/integrations/`、`server/src/integrations/`
+源码位置：插件源码维护在 [market 仓库](https://github.com/ClassIntra/market) 的 `plugins/` 目录；运行时部署到班级服务器的 `plugins/` 目录（该目录不属于主仓库，仅作为运行时加载点）。相关集成代码位于 `client/src/integrations/`、`server/src/integrations/`。
 
 ## 插件与应用的区别
 
