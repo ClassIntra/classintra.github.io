@@ -53,27 +53,35 @@ ClassIntra 通过 `server/.env` 文件配置全部运行参数。本页面列出
 
 ## AI 配置
 
-ClassIntra 支持 OpenAI 兼容的 AI 服务（默认 GPT）与 DeepSeek 双通道。
+v1.3 起，AI 聊天采用**模型注册表**（`ai_models` 表）驱动，支持接入任意 OpenAI 兼容 API：GLM、Qwen、Kimi、DeepSeek、自建网关、第三方中转站均可。模型的新增、编辑、启停（控制用户可见性）、设默认、连接测试全部在 **AI 应用内「模型管理」面板**完成（仅系统管理员可见）。
 
-### OpenAI 兼容
+### 配置分层
+
+| 层 | 入口 | 管什么 |
+|------|------|--------|
+| 运行时 | AI 应用右上角「模型管理」（管理员） | 模型接入、启停、默认模型、能力开关（思考/联网） |
+| 基础设施 | `server/.env`（可用 ClassIntraOps 密钥页配置） | 内置模型（`default` / `deepseek`）留空字段的兜底值，Tavily 搜索密钥 |
+
+::: tip 优先级
+模型注册表中内置行的 `api_url` / `api_key` / `model` 留空时回退到环境变量；管理面板填写的值优先于 `.env`。自定义模型必须在面板中完整填写地址与密钥。
+:::
+
+### 内置模型兜底（环境变量）
+
+`AI_*` 与 `DEEPSEEK_*` 仅作为模型注册表两条内置种子行的兜底值：
 
 | 变量 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `AI_API_KEY` | string | （空） | AI 服务 API Key |
-| `AI_API_URL` | string | （空） | AI 服务接口地址，需兼容 OpenAI Chat Completions 格式 |
-| `AI_MODEL` | string | `gpt-3.5-turbo` | 默认模型 |
-| `AI_AVAILABLE_MODELS` | string | `gpt-4o-mini-2024-07-18,gpt-4o-mini` | 可切换模型列表，逗号分隔 |
-
-### DeepSeek
-
-| 变量 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `DEEPSEEK_API_KEY` | string | （空） | DeepSeek API Key |
+| `AI_API_KEY` | string | （空） | 内置 `default` 模型的 API Key |
+| `AI_API_URL` | string | （空） | OpenAI Chat Completions 兼容接口地址 |
+| `AI_MODEL` | string | `gpt-3.5-turbo` | 请求体 `model` 参数兜底值 |
+| `AI_AVAILABLE_MODELS` | string | — | 历史遗留（v1.2 前的子模型切换），仅作初始化参考 |
+| `DEEPSEEK_API_KEY` | string | （空） | 内置 `deepseek` 模型的 API Key |
 | `DEEPSEEK_API_URL` | string | `https://api.deepseek.com/chat/completions` | DeepSeek 接口地址 |
 | `DEEPSEEK_MODEL` | string | `deepseek-chat` | 默认模型 |
 
-::: tip 双模型切换
-前端 AI 聊天支持 GPT 与 DeepSeek 双通道，用户可在对话中切换模型。DeepSeek 未配置时仅 GPT 可用。
+::: warning 思考模式参数风格
+支持「深度思考」的模型需在管理面板选择思考参数风格：**DeepSeek / GLM 风格**（注入 `thinking: {type: enabled}`）或 **OpenAI 标准**（不注入专用参数）。选错风格可能导致上游返回 422。
 :::
 
 ## 天气配置
@@ -101,7 +109,7 @@ ClassIntra 集成 [和风天气](https://www.qweather.com/) 服务，支持 API 
 
 ## 搜索配置
 
-AI 聊天的联网搜索功能基于 [Tavily](https://tavily.com/)。
+AI 聊天的联网搜索功能基于 [Tavily](https://tavily.com/)。模型注册表中勾选了「联网搜索」能力的模型，对话时会自动调用搜索工具。
 
 | 变量 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
@@ -109,7 +117,7 @@ AI 聊天的联网搜索功能基于 [Tavily](https://tavily.com/)。
 | `TAVILY_API_URL` | string | `https://api.tavily.com/search` | Tavily 搜索接口地址 |
 
 ::: tip 未配置时的行为
-未设置 `TAVILY_API_KEY` 时，AI 聊天的「联网搜索」按钮不显示，但普通对话不受影响。
+未设置 `TAVILY_API_KEY` 时，即使模型勾选了联网搜索能力，实际请求也不会携带搜索工具，普通对话不受影响。
 :::
 
 ## 数据存储配置

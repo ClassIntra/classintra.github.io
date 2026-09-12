@@ -22,6 +22,7 @@ ClassIntra 服务端由 Express 4 实现，对外暴露 HTTP 接口，覆盖认�
 - [CDN 代理 API（/api/cdn）](#cdn-代理-api-api-cdn)
 - [系统 API（/api/system）](#系统-api-api-system)
 - [集成 API（/api/integrations）](#集成-api-api-integrations)
+- [AI 聊天 API（/api/ai-chat）](#ai-聊天-api-api-ai-chat)
 - [错误码列表](#错误码列表)
 - [限流策略](#限流策略)
 - [示例](#示例)
@@ -510,6 +511,93 @@ stop();
 
 ::: tip Webhook 验证
 `POST /api/integrations/webhook` 通过 `X-Webhook-Token` 头部携带集成 Token 进行认证。Webhook 接收方会校验 Token 有效性、Origin 白名单、scopes 权限，并通过 `webhookReceiver` 派发到对应的处理器。
+:::
+
+## AI 聊天 API（/api/ai-chat）
+
+源码：`apps/ai-chat/backend/routes.js`（manifest 声明挂载，全局限流 30 次/分钟）
+
+AI 聊天采用**模型注册表**（`ai_models` 表）驱动，支持接入任意 OpenAI 兼容模型。模型接入、启停与默认模型管理见 [配置项 → AI 配置](/deployment/configuration#ai-配置)。
+
+### 模型
+
+| 方法 | 路径 | 说明 | 认证 |
+| --- | --- | --- | --- |
+| GET | `/api/ai-chat/models` | 当前用户可见的模型列表（不含密钥） | 是 |
+| GET | `/api/ai-chat/admin/models` | 全量模型列表（Key 掩码） | 系统管理员 |
+| POST | `/api/ai-chat/admin/models` | 接入新模型 | 系统管理员 |
+| PUT | `/api/ai-chat/admin/models/:id` | 编辑模型（Key 留空不覆盖） | 系统管理员 |
+| DELETE | `/api/ai-chat/admin/models/:id` | 删除模型 | 系统管理员 |
+| PUT | `/api/ai-chat/admin/models/:id/toggle` | 启用 / 停用（停用默认模型时自动迁移默认标记） | 系统管理员 |
+| PUT | `/api/ai-chat/admin/models/default` | 设置全局默认模型 | 系统管理员 |
+| POST | `/api/ai-chat/admin/models/test` | 测试连接（支持未保存的配置，15s 超时） | 系统管理员 |
+
+**GET /api/ai-chat/models 响应**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "models": [
+      {
+        "id": "glm-4-flash",
+        "label": "智谱 GLM-4-Flash",
+        "color": "#6366f1",
+        "is_free": true,
+        "supports_thinking": true,
+        "supports_search": false,
+        "is_default": false
+      }
+    ],
+    "default_model": "default",
+    "user_model": "glm-4-flash"
+  }
+}
+```
+
+### 聊天
+
+| 方法 | 路径 | 说明 | 认证 |
+| --- | --- | --- | --- |
+| POST | `/api/ai-chat/chat` | 同步对话（JSON 响应） | 是 |
+| POST | `/api/ai-chat/chat/stream` | 流式对话（SSE） | 是 |
+
+**POST /api/ai-chat/chat 请求体**：
+
+```json
+{
+  "conversation_id": "uuid",
+  "message": "你好",
+  "model": "glm-4-flash",
+  "thinking": true,
+  "system_prompt": "可选，全局自定义提示词"
+}
+```
+
+模型解析优先级：请求体 `model` > 用户保存的偏好 > 全局默认模型 > 首个可用模型。主模型请求失败时自动回落到默认模型，响应带 `fallback: true` 与实际使用的 `model` / `model_label` 字段。`thinking` 仅在所选模型声明了「深度思考」能力时生效。
+
+**SSE 事件**（`text/event-stream`，逐行 `data: {...}`）：
+
+| 事件 | 说明 |
+| --- | --- |
+| `{"content": "..."}` | 增量内容（`action: "replace"` 表示整段替换，用于搜索后重放） |
+| `{"reasoning": "..."}` | 思考过程增量（思考模式） |
+| `{"searching": true, "query": "..."}` | 联网搜索开始 / 结束 |
+| `{"fallback": true, "model": "...", "model_label": "..."}` | 主模型失败，已切换备用模型 |
+| `{"usage": {...}}` | Token 用量与缓存命中 |
+| `{"error": "..."}` / `{"done": true}` | 错误 / 正常收尾 |
+
+### 对话管理与设置
+
+| 方法 | 路径 | 说明 | 认证 |
+| --- | --- | --- | --- |
+| GET / POST | `/api/ai-chat/conversations` | 对话列表 / 新建 | 是 |
+| GET / PATCH / DELETE | `/api/ai-chat/conversations/:id` | 对话详情 / 改标题与人设 / 删除 | 是 |
+| PUT | `/api/ai-chat/conversations/:id/messages` | 整体覆盖消息（多选编辑后同步） | 是 |
+| GET / PUT | `/api/ai-chat/settings` | 用户偏好（`system_prompt`、`pinned_conversations`、`model`） | 是 |
+
+::: warning 管理端点权限
+`/api/ai-chat/admin/*` 要求 `is_admin = 1`（系统管理员），班干与班级管理员（班管）均无权访问 —— 模型配置包含上游 API 密钥。
 :::
 
 ## 错误码列表
