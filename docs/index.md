@@ -13,6 +13,9 @@ hero:
       text: 📦 安装部署
       link: /quick-start/installation
     - theme: alt
+      text: 🧰 运维控制台
+      link: /ops/
+    - theme: alt
       text: 📖 使用指南
       link: /quick-start/basic-usage
     - theme: alt
@@ -60,6 +63,11 @@ features:
     details: 用户管理、广播通知、班干委任、应用管控（远程启用/禁用桌面应用）、操作日志。
     link: /concepts/app-control
     linkText: 应用管控 →
+  - icon: 🧰
+    title: 运维控制台
+    details: ClassIntraOps 桌面工具（测试版）——服务状态仪表、密钥配置、跨班对端探活、一键安装更新，单文件免安装。
+    link: /ops/
+    linkText: 使用指引 →
 ---
 
 ## 快速导航
@@ -72,6 +80,7 @@ features:
 | 🚢 部署运维 | 生产部署、教育场景、配置项、监控 | [进入](/deployment/) |
 | 📡 API 参考 | 服务端 API、前端 API、类型定义 | [进入](/api/) |
 | 🎨 UI & 主题 | 组件库、主题定制、图标系统 | [进入](/ui/) |
+| 🧰 运维控制台 | ClassIntraOps 桌面工具下载与使用指引（测试版） | [进入](/ops/) |
 
 ## 宣传片
 

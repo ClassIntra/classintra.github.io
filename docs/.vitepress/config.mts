@@ -92,6 +92,7 @@ export default defineConfig({
           { text: '类型定义', link: '/api/types' },
         ]
       },
+      { text: '运维控制台', link: '/ops/' },
       { text: 'GitHub', link: 'https://github.com/ClassIntra/ClassIntra' },
     ],
 
@@ -157,6 +158,13 @@ export default defineConfig({
           { text: '服务端 API', link: '/api/server' },
           { text: '前端 API', link: '/api/client' },
           { text: '类型定义', link: '/api/types' },
+        ]
+      },
+      {
+        text: '运维控制台',
+        collapsed: false,
+        items: [
+          { text: 'ClassIntraOps 指引', link: '/ops/' },
         ]
       },
       {
