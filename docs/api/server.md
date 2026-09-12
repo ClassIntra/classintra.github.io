@@ -550,7 +550,8 @@ AI 聊天采用**模型注册表**（`ai_models` 表）驱动，支持接入任�
       }
     ],
     "default_model": "default",
-    "user_model": "glm-4-flash"
+    "user_model": "glm-4-flash",
+    "can_manage": false
   }
 }
 ```
@@ -597,7 +598,7 @@ AI 聊天采用**模型注册表**（`ai_models` 表）驱动，支持接入任�
 | GET / PUT | `/api/ai-chat/settings` | 用户偏好（`system_prompt`、`pinned_conversations`、`model`） | 是 |
 
 ::: warning 管理端点权限
-`/api/ai-chat/admin/*` 要求 `is_admin = 1`（系统管理员），班干与班级管理员（班管）均无权访问 —— 模型配置包含上游 API 密钥。
+`/api/ai-chat/admin/*` 要求 `is_admin = 1`：系统管理员与**班管**（服务端登录时动态提升）有权限，班干（officer 角色）无权访问 —— 模型配置包含上游 API 密钥。`GET /models` 响应中的 `can_manage` 字段为服务端权威判定，前端管理入口以此展示。
 :::
 
 ## 错误码列表
