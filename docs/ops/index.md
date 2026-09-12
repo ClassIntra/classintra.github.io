@@ -7,6 +7,8 @@ description: ClassIntraOps 桌面运维控制台 —— 下载、安装与使用
 
 ClassIntraOps 是 ClassIntra 的**独立运维控制台**：一个 Windows 桌面应用（另附零依赖 Web 控制台作为备用形态），用于在不碰命令行的前提下完成 CI 的日常运维 —— 查看服务状态、配置密钥、跨班对端探活、安装更新、看日志。
 
+**它主要面向零基础用户**：下载单文件、双击即用，全程图形界面，不需要命令行与开发经验。开发者仍可走 [快速开始](/quick-start/) 的命令行方式。
+
 - 仓库：<https://github.com/ClassIntra/ClassIntra-Ops>
 - 版本：**v0.1（测试版）**
 - 平台：Windows 10/11 x64
