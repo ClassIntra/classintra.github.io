@@ -556,6 +556,30 @@ AI 聊天采用**模型注册表**（`ai_models` 表）驱动，支持接入任�
 }
 ```
 
+### 模型管理（AI 模型 tab，管理页内）
+
+模型管理 UI位于 **管控中心 → AI 模型** tab（系统管理员与班管可见）。支持：
+
+- **接入数量与来源不限**：每个模型独立 API 地址与密钥；API 地址填到 `/v1` 即自动补全 `/chat/completions`
+- **单源多模型**：同一源接入多个模型时自动提示复用已有密钥（`reuse_key_from`，明文不出后端）
+- **厂商模板**：智谱 GLM / DeepSeek / Kimi / Qwen / 硅基流动 / OpenAI 一键填充
+- **模型级参数**：上下文预算（`max_context_tokens`，0 = 全局默认 10000）、单次输出上限（`max_output_tokens`）、思考强度（`reasoning_effort`，low / medium / high）
+- 启停（控制用户可见性）、设默认、连接测试（15s 超时）、删除
+
+### 使用策略（ai_policies）
+
+策略 = 预设的模型授权方案（如「仅免费」「考试模式」），在管理页多选用户一次性应用。
+
+| 方法 | 路径 | 说明 | 认证 |
+| --- | --- | --- | --- |
+| GET | `/api/ai-chat/admin/policies` | 策略列表（含默认策略标记） | 系统管理员/班管 |
+| POST | `/api/ai-chat/admin/policies` | 创建策略（`model_ids` 空数组 = 不限制） | 系统管理员/班管 |
+| PUT | `/api/ai-chat/admin/policies/:id` | 编辑策略 | 系统管理员/班管 |
+| DELETE | `/api/ai-chat/admin/policies/:id` | 删除策略（默认策略不可删；引用用户自动回落默认策略） | 系统管理员/班管 |
+| POST | `/api/ai-chat/admin/apply-policy` | 多选用户批量应用策略（`user_ids` + `policy_id`，空 `policy_id` = 解除限制） | 系统管理员/班管 |
+
+策略解析规则：用户生效策略的允许集合之外视为不可用；请求模型、个人偏好、全局默认均被排除时，取策略内第一个可用模型；故障回落同样受策略约束。
+
 ### 聊天
 
 | 方法 | 路径 | 说明 | 认证 |
@@ -599,6 +623,8 @@ AI 聊天采用**模型注册表**（`ai_models` 表）驱动，支持接入任�
 
 ::: warning 管理端点权限
 `/api/ai-chat/admin/*` 要求 `is_admin = 1`：系统管理员与**班管**（服务端登录时动态提升）有权限，班干（officer 角色）无权访问 —— 模型配置包含上游 API 密钥。`GET /models` 响应中的 `can_manage` 字段为服务端权威判定，前端管理入口以此展示。
+
+管控中心用户管理页的「AI 策略」批量应用走同一权限体系；旧 DeepSeek 单独开关（`/admin/ai-settings/*` 的 deepseek 端点）已废弃移除。
 :::
 
 ## 错误码列表
