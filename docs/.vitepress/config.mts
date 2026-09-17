@@ -69,6 +69,7 @@ export default defineConfig({
           { text: 'CLI 工具', link: '/development/cli' },
           { text: '调试技巧', link: '/development/debugging' },
           { text: '联机五子棋开发', link: '/development/gomoku-online' },
+          { text: '网易云音乐插件', link: '/development/netease-music' },
           { text: '外部系统集成', link: '/development/integration' },
           { text: 'Chrome 80 兼容', link: '/development/chrome-80-compat' },
         ]
@@ -134,6 +135,7 @@ export default defineConfig({
           { text: 'CLI 工具', link: '/development/cli' },
           { text: '调试技巧', link: '/development/debugging' },
           { text: '联机五子棋开发', link: '/development/gomoku-online' },
+          { text: '网易云音乐插件', link: '/development/netease-music' },
           { text: '外部系统集成', link: '/development/integration' },
           { text: 'Chrome 80 兼容', link: '/development/chrome-80-compat' },
         ]
