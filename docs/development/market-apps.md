@@ -121,6 +121,23 @@ node scripts/market-review.mjs market-apps/gomoku --json
 脚本只做静态扫描。它帮你在提交前发现问题，**不在运行期拦截任何行为**。同页面自由模型下，最终责任在开发者。
 :::
 
+## 本地开发与双仓同步
+
+market-apps 前端是**直出型**：服务器从 `/market-static/<name>/` 以 no-cache 头直接下发源码文件，**没有构建步骤**——保存后刷新浏览器即生效。因此本地开发循环非常短：
+
+```bash
+# 边改边查：自动跑 Chrome 80 兼容 lint，文件变化时重跑并提示刷新（防抖 300ms）
+node scripts/build-app.js my-app --watch
+
+# backend/ 有改动时单独提示需重启服务器（或用 CLASSINTRA_HOT_RELOAD=1 启动实现后端热重载）
+```
+
+完整的开发循环（生成骨架 → 直出调试 → 静态审查 → 双仓同步）见 [第三方应用开发 § 开发循环速查](./third-party#开发循环速查)。
+
+::: info 双仓模型（市场维护者）
+主仓 `.gitignore` 忽略 `plugins/` 与 `market-apps/`，插件与市场应用文件只进 market 仓。在主仓工作区开发后必须用 `.\scripts\sync-market.ps1 -App <name> [-Commit "msg"]` 镜像同步到 market 仓 `apps/<name>/`（robocopy `/MIR`，退出码 0–7 视为成功），再推 market 仓发布 catalog。命令详见 [CLI 工具 § 市场双仓同步](./cli#市场双仓同步-sync-market-市场维护者)。
+:::
+
 ## 运行时协议
 
 市场前端入口通过全局 SDK 注册定义：

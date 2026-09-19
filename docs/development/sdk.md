@@ -30,6 +30,31 @@ window.ClassIntraMarket.define({
 第三方不过 Vite 构建，拿不到 `@vue/compiler`。`context.ui.*` 返回的是 `HTMLElement`，直接 `appendChild`。这保证了零构建步骤。
 :::
 
+### TypeScript 类型声明（sdk.d.ts）
+
+主仓库 `plugins/_sdk/sdk.d.ts` 提供市场 SDK 的完整 TypeScript 类型声明（约 290 行），覆盖 `MarketContext`（context 全部成员签名）、`MarketAppDefinition`（`window.ClassIntraMarket.define` 的应用定义）、`AppManifest`、`ApiClient`、`RealtimeChannel`、`ModalOptions` 等。TypeScript 项目引用后可获得 IDE 补全与编译期检查：
+
+```typescript
+// 方式一：类型导入（推荐）
+import type { MarketContext } from '../../plugins/_sdk/sdk';
+```
+
+```json
+// 方式二：加入 tsconfig.json 的 include / files
+{ "include": ["src", "../plugins/_sdk/sdk.d.ts"] }
+```
+
+纯 JS 项目也可以用 JSDoc 取得同等提示：
+
+```javascript
+/** @param {import('../../plugins/_sdk/sdk').MarketContext} context */
+export function mount(container, context) { /* ... */ }
+```
+
+::: tip 仅是开发期辅助
+`.d.ts` 不参与运行时——SDK 本体仍是纯 ES5 直出 JS，引用类型声明不引入任何构建步骤。
+:::
+
 ### `context.app`
 
 | 成员 | 签名 | 说明 |

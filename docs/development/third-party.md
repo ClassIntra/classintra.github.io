@@ -420,6 +420,33 @@ ClassIntra 只有八档圆角。**不要写裸 px**。
 
 ---
 
+## 图标满铺规范
+
+**硬性规范：图标资产不留白**——内容顶格铺满 100% 画布，圆角由 AppIcon 容器 CSS 统一裁切（72px + radius 20px + object-fit cover），**绝不在资产里烘焙圆角或透明边距**。
+
+桌面图标容器按 72px + 20px 圆角裁切。若 SVG 根 `<rect>` 自带 `rx`，且其比例小于容器裁切比例（例如 116/512 ≈ 0.227 < 20/72 ≈ 0.278），四角会露出透明月牙缝隙，桌面上看就是「图标旁边有留白」：
+
+```xml
+<!-- 错误：根 rect 烘焙圆角，四角透明缝隙露出桌面背景 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="116" fill="..."/>
+</svg>
+
+<!-- 正确：根 rect 直角满铺，圆角交给容器 CSS 裁切 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="..."/>
+</svg>
+```
+
+要点：
+
+- **内部装饰元素**的 `rx` 不受限制（圆角小卡片等），禁的是**根 rect / 根画布层**
+- manifest 的 `icon: './icon.svg'` 相对路径自动重写为 `/market-static/<name>/...`（官方应用为 `/apps-static/<name>/...`），改图标无需构建
+- 存量位图去留白：`.\scripts\icon-trim.ps1`（检测 alpha 包围盒 → 裁剪 → 重采样回满画布，支持 PNG 与内嵌 base64 位图的 SVG，见 [CLI 工具](./cli#图标满铺体检-icon-trim)）
+- 提交注意 500KB 单文件上限：大位图内嵌前先降采样（如 768/512px HighQualityBicubic 重编码）
+
+---
+
 ## 后端路由
 
 `backend/routes.js` 是 CommonJS 模块，导出 Express Router。
@@ -723,6 +750,17 @@ node scripts/market-review.mjs <dir> --json    # 机器可读输出
 ```
 
 审查脚本按五组检查：manifest 合规 / Chrome 80 语法 / CSS 兼容 / 危险 API / 资源回收。**它不做运行时隔离**——只是在你提交前把常见问题标出来。存在错误时退出码为 1，可用于 CI 门禁。
+
+### 开发循环速查
+
+| 阶段 | 命令 |
+|------|------|
+| 生成骨架 | `pnpm create:app my-app --label "我的应用"` |
+| 边改边查 | `node scripts/build-app.js my-app --watch`（自动 compat lint + 提示刷新） |
+| 静态审查 | `pnpm review:market market-apps/my-app`（五组检查，错误即退出码 1） |
+| 双仓同步（市场维护者） | `.\scripts\sync-market.ps1 -App my-app [-Commit "feat: xxx"]` |
+
+market-apps 前端是**直出**：没有构建步骤，保存后刷新浏览器即生效；兼容性靠 [diag compat](./cli#校验器-diag) 与 `review:market` 把关，图标走 [图标满铺规范](#图标满铺规范)。
 
 ---
 

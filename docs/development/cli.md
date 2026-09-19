@@ -452,6 +452,88 @@ pnpm create:app my-app --label "我的应用" --kind official --dir apps
 
 生成的模板本身就是「正确示例」——已预置 ES5 语法、`--ci-*` 令牌消费、`context.app.onDestroy` 四类资源回收，可直接通过 `review:market` 审查（0 错误 0 警告）。
 
+### 应用 / 主题 / 小组件脚手架（三合一）
+
+`create:app` 面向市场应用；官方内置应用（`apps/`）、主题（`themes/`）与桌面小组件用 `scripts/scaffold.js` 三合一脚手架：
+
+```bash
+# 官方内置应用（自动附满铺图标模板 icon.svg）
+node scripts/scaffold.js app my-app --label "我的应用" [--route /my-app]
+
+# 主题（type 必须为 light|dark，theme-loader 硬性契约）
+node scripts/scaffold.js theme my-theme --name "我的主题" --type dark
+
+# 桌面小组件（自动把声明合并进应用 manifest 的 frontend.widgets[]，无需手动编辑）
+node scripts/scaffold.js widget my-app my-clock --name "时钟"
+```
+
+生成的 `icon.svg` 是**直角满铺底**（根 rect 无 `rx`/`ry`）——圆角由 AppIcon 容器 CSS 统一裁切，资产内烘焙圆角会在四角露出透明缝隙（详见 [第三方应用开发 § 图标满铺规范](/development/third-party#图标满铺规范)）。主题 tokens 与小组件契约详见 [主题开发](./themes) 与 [小组件](./widgets)。
+
+### 校验器 diag
+
+与运行时同一套 manifest schema 校验器，覆盖三类模块 + 兼容性 lint：
+
+| 命令 | 检查内容 |
+|------|---------|
+| `node scripts/diag.js app [name]` | 应用 manifest 规范 + 文件完整性 + 路由冲突（含 widgets[].component 存在性） |
+| `node scripts/diag.js plugin [name]` | 插件校验（backend 必有 + mountPath 跨类冲突检测） |
+| `node scripts/diag.js theme [id]` | 主题硬性契约（`type` = light/dark + `TOKENS` 导出）+ tokens 冒烟 |
+| `node scripts/diag.js compat [name]` | Chrome 80 兼容性 lint（扫描 `apps/*` + `market-apps/*` 前端） |
+| `node scripts/diag.js all` | 全部（自动附带 compat） |
+
+`compat` 分级规则（`apps/` 经 vite 构建可转译语法，`market-apps/` 直出无任何兜底）：
+
+| 级别 | 规则 |
+|------|------|
+| FAIL（直出型专属） | `?.` `??` `&&=` `\|\|=` `??=`（语法类，Chrome 80 无法解析） |
+| FAIL（一律） | `structuredClone` `replaceChildren` `.at()` `.findLast`（运行时 API，构建也不可转译） |
+| FAIL（一律） | CSS `aspect-ratio` / `inset` / `dvh` / `:is()` / `:where()` |
+| FAIL（直出）/ WARN（构建型） | CSS `gap`（构建型 flex gap 有 polyfill，grid 需 `grid-gap`） |
+| WARN | `backdrop-filter` 缺 `-webkit-` 前缀 |
+
+扫描自动跳过块注释与 `//` 行注释（防文档误报），输出 `文件:行号 + 违规内容`，FAIL 影响退出码（pre-commit 钩子同标准）。背景与替代方案详见 [Chrome 80 兼容约束](/development/chrome-80-compat)。
+
+### 按需构建 build-app
+
+```bash
+node scripts/build-app.js <name>           # 兼容 lint +（apps/）vite 构建 /（market-apps/）直出检查
+node scripts/build-app.js <name> --watch   # market-apps/ 专用：文件变化自动 lint + 提示刷新
+```
+
+自动识别应用类型（依次查 `apps/` 与 `market-apps/` 的 manifest.json）。两类应用的「改动生效」机制完全不同：
+
+- **先跑 `diag.js compat <name>`**，FAIL 即终止，避免把带伤产物构建出去
+- `apps/`（构建型）：vite **全量**构建（单页架构无法单应用构建，vendor chunk 共享）。开发期迭代用 `cd client && npx vite dev` HMR 免全量构建
+- `market-apps/`（直出型）：检查 entry/style/icon 文件存在性；改完**刷新浏览器即生效**（no-cache 直出，无需构建）。`--watch` 防抖 300ms 自动重跑 lint，backend 变更单独提示需重启服务器
+
+::: tip 后端热重载（开发机可选）
+`CLASSINTRA_HOT_RELOAD=1` 启动服务器时，`apps/*/backend` 与 `plugins/*/backend` 改动自动热重载免重启（fs.watch + 防抖 300ms，语法错误时保留旧代码服务不中断）。只覆盖各模块 `backend/` 目录内文件，宿主层（`server/src/`）与前端不适用。
+:::
+
+### 图标满铺体检 icon-trim
+
+项目硬性规范：**图标资产不留白**——内容顶格铺满 100% 画布，圆角由 AppIcon 容器 CSS 统一裁切（72px + radius 20px + object-fit cover）。
+
+```powershell
+.\scripts\icon-trim.ps1              # 处理 Resources/public/icons（默认）
+.\scripts\icon-trim.ps1 -Dir <path>  # 指定其他图标目录
+```
+
+检测 alpha 包围盒 → 裁剪 → 高质量重采样回满画布；支持 PNG 与内嵌 base64 位图的 SVG。全透明、已满铺、>480KB 的文件自动跳过（pre-commit 有 500KB 单文件上限，历史超大资产应先降采样重嵌而非重编码）。
+
+### 市场双仓同步 sync-market（市场维护者）
+
+主仓 `.gitignore` 忽略 `plugins/` 与 `market-apps/`，插件与市场应用文件只进 market 仓。在主仓工作区开发后**必须立即同步**，防双仓漂移：
+
+```powershell
+.\scripts\sync-market.ps1                      # 同步 plugins/ → market 仓 + 显示变更
+.\scripts\sync-market.ps1 -Commit "feat: xxx"  # 同步 + 自动提交 market 仓
+.\scripts\sync-market.ps1 -Health              # 附带主仓 git health（b→o 字符损坏体检）
+.\scripts\sync-market.ps1 -App gomoku          # 额外镜像 market-apps/gomoku → market/apps/gomoku
+```
+
+`-App` 用 robocopy `/MIR` 镜像（退出码 0–7 视为成功）；`-Commit` 时自动 `git add apps/`。插件 manifest 的 `version` 独立语义化递增，与主仓 `server/version.json` 无关。
+
 ## 常用组合命令
 
 ### 一键开发环境

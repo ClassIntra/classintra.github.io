@@ -424,11 +424,20 @@ async function fetchData() {
 
 ## 检查方法
 
-### ESLint 检查（如有配置）
+### diag compat 自动扫描（推荐）
+
+手动 grep 容易漏、也容易误报（注释里的示例代码）。仓库内置了工具化扫描：
 
 ```bash
-cd client && npx eslint src/
+node scripts/diag.js compat [app-name]   # 不带名字扫描全部 apps/ + market-apps/ 前端
+node scripts/diag.js all                 # 全量校验，自动附带 compat
 ```
+
+- 扫描 `.js/.vue/.css`，自动跳过块注释与 `//` 行注释（防文档误报）
+- 分级输出 `文件:行号 + 违规内容`：语法类（`?.` `??` `&&=` `\|\|=` `??=`）与 CSS 新特性（`aspect-ratio` / `inset` / `dvh` / `:is()`）在**直出型**（market-apps）判 FAIL、构建型（apps）可被 esbuild 转译；`structuredClone` / `replaceChildren` / `.at()` / `.findLast` 等运行时 API 一律 FAIL；flex `gap` 直出 FAIL、构建型 WARN
+- FAIL 影响退出码（pre-commit 钩子同标准）；`node scripts/build-app.js <name>` 构建前也会先跑
+
+完整规则表见 [CLI 工具 § 校验器 diag](./cli#校验器-diag)。
 
 ### 手动 grep 检查禁用语法
 
