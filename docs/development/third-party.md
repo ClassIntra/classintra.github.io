@@ -509,6 +509,55 @@ stmt.all.apply(stmt, values);
 
 ---
 
+## 内置数据源（静态文件读取）
+
+并非所有数据都落在 SQLite。部分系统应用直接读取仓库内的**静态数据文件**——改文件即改内容，
+无需改代码、无需迁移。要复用同一份数据（例如给课程表做扩展视图），先认清**文件在哪、字段怎么命名**。
+
+### 课程表：`Resources/public/kb.yml`
+
+| 项 | 说明 |
+| --- | --- |
+| 位置 | 仓库根 `Resources/public/kb.yml`（服务端经 `config.resourcesDir` + `/public/kb.yml` 解析，随静态资源下发） |
+| 读取 | `apps/timetable/backend/routes.js` **每次请求都重新读盘解析**（不缓存，保证实时）；使用为该文件定制的 YAML 子集解析器，而非通用 YAML 库 |
+| 接口 | `GET /api/timetable`（需登录）→ `{ code, data: { version, subjects, schedules, holidays, adjustments } }` |
+
+```yaml
+version: 1
+subjects:              # 学科字典
+- name: 语文            # 全名（图例、下拉框显示）
+  simplified_name: 语    # 单字简称（课表格子内显示）
+  teacher: ''          # 任课教师（默认空串）
+  room: ''             # 上课地点（默认空串）
+schedules:             # 课表本体
+- name: 标准课表1
+  enable_day: 1        # 1=周一 … 7=周日
+  weeks: all           # all / odd / even（单双周）
+  classes:
+  - subject: 早读       # 必须与某个 subjects[].name 完全一致
+    start_time: '06:50:00'
+    end_time: '07:33:00'
+holidays: []           # { date, name }
+adjustments: []        # { date, as_day, weeks, note }
+```
+
+字段命名约定（**新增展示前请先对齐**）：
+
+| 字段 | 含义 | 当前使用位置 |
+| --- | --- | --- |
+| `subjects[].name` | 学科全名 | 图例、编辑下拉、筛选 |
+| `subjects[].simplified_name` | 单字简称 | 课表格子（空间有限时） |
+| `subjects[].teacher` | 任课教师 | 默认空串，前端暂未渲染 |
+| `subjects[].room` | 上课地点 | 默认空串，前端暂未渲染 |
+| `schedules[].classes[].subject` | 引用学科名 | 必须与某个 `subjects[].name` 完全一致，否则单元格显示原始字符串 |
+
+::: tip 想展示「谁在哪上课」
+`teacher` / `room` 目前是空串——前端只渲染 `simplified_name`。
+先在 `kb.yml` 里把这两列填上，再让前端读取对应字段即可；**无需改后端**（`GET /api/timetable` 已原样返回整个 `subjects`）。
+:::
+
+---
+
 ## 安装与生命周期
 
 用户不需要克隆市场仓库。班级服务器读取 GitHub Raw 上的 catalog，按文件清单逐个下载：

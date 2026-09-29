@@ -211,6 +211,70 @@ build-better-sqlite3.bat
 
 仅在预编译包不可用时手动编译 `better-sqlite3`，正常情况下 `.npmrc` 的 `build_from_source=false` 已自动处理。
 
+## 构建产物回收与耗时
+
+### 为什么 `dist/assets` 会越滚越大
+
+`client/vite.config.mjs` 关掉了 `emptyOutDir`（本机构建环境禁止构建前批量删目录，
+否则 Vite 清空 `outDir` 会被安全删除守卫拦下，**构建中途失败且线上产物已被删残**）。
+副作用是旧的带哈希 chunk 永不回收 —— 实测曾堆到 **11920 个文件 / 786MB**（`index-*.js` 就有 320 份）。
+
+`client/scripts/prune-dist.js` 负责在**构建后**精确回收，由 `pruneDistPlugin` 自动调用：
+
+```bash
+cd client
+node scripts/prune-dist.js                      # 回收（默认只删 24h 之前的残留）
+node scripts/prune-dist.js --dry                # 只报告不删
+node scripts/prune-dist.js --keep-hours 0       # 水位放宽到 0 小时（激进）
+SKIP_PRUNE=1 npx vite build                     # 本次构建跳过回收
+```
+
+存活判定有四道（任意一道判「还在用」就保留）：
+
+1. 本轮构建的 `dist/.vite/manifest.json`（`file` / `css` / `assets`）
+2. `dist` 根目录所有 html 及其正文引用
+3. **不动点扫描**：存活文件正文里的资源名迭代入队（覆盖 `./chunk-xxx.js` 这类相对引用、
+   html 内联脚本、css 的 `url()` 字体），保证 legacy chunk 图与字体整条链路不被误删
+4. **24 小时水位**：兜住「用户已打开但尚未刷新的旧页面」——它仍可能去拉上一代的懒加载 chunk
+
+::: tip 首次回收实测
+`--dry` 报告可回收 10490 个 / 662.4 MB，执行后 `dist` 从 786MB 降到 104MB（余量为当天的历史代际，次日构建自动清掉）。
+:::
+
+### 构建耗时构成（2026-09-29 实测，2663 个模块）
+
+| 阶段 | 耗时 |
+|---|---|
+| 模块转换（Rollup transform） | ~18s |
+| 打包 + 压缩 + legacy 转译 | **~160s** |
+| 收尾（体积统计/写盘） | ~20s |
+| **合计** | **~3 分 20 秒** |
+
+插件级归因：`vite:legacy-post-process` 累计 **1,271,129 ms**（208 次调用、单次最高 86s，并行执行故累计远大于墙钟），
+即 `@vitejs/plugin-legacy` 用 Babel 把所有 chunk（含 1MB 的 mermaid / video.js）再转译一遍，占构建时间约 **85%**。
+
+### `LEGACY_CHUNKS=0` 快速构建
+
+```bash
+cd client && LEGACY_CHUNKS=0 npx vite build     # 3m20s → 35s（5.6 倍）
+```
+
+代价：不再产出 `nomodule` 的 legacy bundle，**旧浏览器没有兜底**（现代 bundle 与 polyfills 不受影响）。
+校园平板基线是 Chrome 80，原生支持 ESM、加载的是 `type="module"` 的现代 bundle，
+所以理论上可关；但是否切换应由真机实测后决定，因此**默认仍为开启**。
+
+### 产物冒烟检查
+
+回收会删掉上千个旧文件，「删了不该删的」只有真实页面才能验出来：
+
+```bash
+cd client
+node scripts/smoke-dist.mjs                     # 断言启动屏退场 + #app 挂载 + 无产物 404
+```
+
+脚本用 CDP 驱动无头 Chrome 打开首页，区分「产物失败」（必须为 0，影响退出码）
+与「接口 4xx」（未登录时的 401，预期内）。截图输出到 `logs/smoke/`。
+
 ## 版本管理
 
 ClassIntra 使用 `server/version.json` 管理版本，由 `client/scripts/prebuild.js` 在每次 `pnpm build` 时自动维护。

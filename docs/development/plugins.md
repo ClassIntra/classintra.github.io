@@ -9,6 +9,45 @@ description: ClassIntra 插件开发指南，覆盖 plugins 目录结构、manif
 
 源码位置：插件源码维护在 [market 仓库](https://github.com/ClassIntra/market) 的 `plugins/` 目录；运行时部署到班级服务器的 `plugins/` 目录（该目录不属于主仓库，仅作为运行时加载点）。相关集成代码位于 `client/src/integrations/`、`server/src/integrations/`。
 
+## 安装与卸载（插件市场）
+
+插件通过内置**插件市场**分发。管理员在市场页一键安装 / 卸载，**无需重启服务器**——后端路由由热挂载调度器即时接管。
+
+| 端点 | 权限 | 说明 |
+| --- | --- | --- |
+| `GET /api/market/plugins-installed` | 登录 | 列出已安装插件 |
+| `POST /api/market/install-plugin` | 管理员 | 按市场名安装，body `{ name, source? }`（`source` 默认 `gitee`，失败时按源列表回退） |
+| `POST /api/market/uninstall-plugin` | 管理员 | 按名卸载，body `{ name }` |
+
+安装链路：拉取市场源 `index.json` 的 `plugins` 段 → 校验插件名（kebab-case）→
+**拒绝降级**（市场版本低于已装版本直接报错）→ 逐文件下载（限制扩展名、单文件与总量上限，
+且路径必须位于 `plugins/<name>/` 下）→ 原子写入运行时 `plugins/` 目录 → 后端路由热挂载 →
+在 `app_control` 表注册为默认启用。若热挂载失败，插件仍已落盘，重启后由 `route-aggregator` 自动重试。
+
+市场源 `index.json` 通过 `plugins` 段声明可安装插件，每个条目至少包含 `name` / `label` / `version` /
+`description` 与 `files`（相对仓库根的文件清单）：
+
+```json
+{
+  "plugins": [
+    {
+      "name": "astrbot-relay",
+      "label": "AstrBot 机器人接入",
+      "version": "1.0.0",
+      "description": "将 AstrBot 机器人接入 ClassIntra 私聊与公共聊天室……",
+      "author": "ClassIntra",
+      "files": [
+        "plugins/astrbot-relay/manifest.json",
+        "plugins/astrbot-relay/README.md",
+        "plugins/astrbot-relay/backend/routes.js"
+      ]
+    }
+  ]
+}
+```
+
+> 插件市场的完整案例见 [AstrBot 机器人接入](./astrbot) 与 [网易云音乐插件](./netease-music)。
+
 ## 插件与应用的区别
 
 | 维度 | 应用（app） | 插件（plugin） |
