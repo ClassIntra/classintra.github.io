@@ -28,6 +28,7 @@ description: ClassIntra 应用清单（manifest.json）规范，包含完整 Sch
 | `frontend` | object | ❌ | — | 前端配置（见下表） |
 | `backend` | object | ❌ | — | 后端配置（见下表） |
 | `extraBackends` | array | ❌ | — | 额外后端路由（见下表） |
+| `config` | array | ❌ | — | 应用/插件配置项声明（见下方「应用配置」章节） |
 
 ### `frontend` 字段
 
@@ -87,6 +88,19 @@ description: ClassIntra 应用清单（manifest.json）规范，包含完整 Sch
 | `mountPath` | string | ✅ | 挂载路径 |
 | `entry` | string | ✅ | 入口文件路径 |
 
+### `config` 数组项（应用/插件配置声明）
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `key` | string | ✅ | 配置键（环境变量风格，`/^[A-Za-z_][A-Za-z0-9_]*$/`） |
+| `label` | string | ✅ | 管理端配置表单的显示标签 |
+| `type` | string | ✅ | 字段类型：`string` / `number` / `boolean` / `secret` |
+| `required` | boolean | ❌ | 是否必填；缺失时管理端安装页显示「待配置」警示 |
+| `default` | string | ❌ | 默认值（三级回退的最后一级） |
+| `description` | string | ❌ | 配置说明，展示给管理员 |
+
+> 应用/插件后端依赖外部服务（API 地址、密钥等）时，必须在 `config` 中声明，让安装链路感知到需要配置什么——详见下方[应用配置](#应用配置config)章节。
+
 ## JSON 示例
 
 ### 最小应用
@@ -134,9 +148,54 @@ description: ClassIntra 应用清单（manifest.json）规范，包含完整 Sch
   },
   "extraBackends": [
     { "mountPath": "/api/cloud", "entry": "./backend/cloud-routes.js" }
+  ],
+  "config": [
+    { "key": "API_BASE", "label": "服务地址", "type": "string", "required": true, "description": "上游服务的完整地址" },
+    { "key": "API_TOKEN", "label": "访问密钥", "type": "secret", "required": true },
+    { "key": "MAX_ITEMS", "label": "列表条数上限", "type": "number", "default": "50" }
   ]
 }
 ```
+
+## 应用配置（config）
+
+应用/插件后端依赖外部服务（API 地址、密钥等）时，此前只能写在 `.env` 里——安装链路感知不到，管理员装完不知道要配什么、去哪配。`config` 声明让配置成为 manifest 契约的一部分。
+
+### 工作流
+
+```
+manifest.config 声明
+        │
+        ├─→ 安装时检测：缺失必填项 → 管理端安装页显示「待配置」警示，引导填写
+        ├─→ 管理端读写：/api/market/apps/:name/config（GET 返回状态+非敏感值，PUT 保存）
+        │       └─→ 值统一存数据库 app_config 表，保存即时生效，无需重启服务器
+        └─→ 启动扫描：服务器启动时检查所有已安装应用的必填配置，缺失记 warn 日志
+```
+
+### 读取回退顺序（三级）
+
+```
+数据库 app_config 表  →  process.env  →  manifest.config[].default
+```
+
+后端代码通过 `server/src/utils/app-config.js` 读取，值已按声明类型自动转换：
+
+```js
+var appConfig = require('../utils/app-config');
+
+// 按类型转换后的 { key: value }（应用后端自身的运行时读取）
+var cfg = appConfig.getConfig('astrbot-relay');
+
+// 配置状态（管理端用）：{ values, configured, missingRequired }
+// secret 类型的明文绝不出现在 status 里，只给 configured 布尔，防管理端轮询泄露
+var status = appConfig.getConfigStatus('astrbot-relay');
+```
+
+### 安全约定
+
+- `secret` 类型：明文只经 `getConfig` 提供给应用后端自身；管理端接口只返回 `configured` 布尔
+- `key` 必须匹配 `/^[A-Za-z_][A-Za-z0-9_]*$/`（写入数据库前强校验）
+- 卸载应用时自动清理其全部配置（`clearValues`）
 
 ## 自动聚合流程图
 
