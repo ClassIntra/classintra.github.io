@@ -18,7 +18,7 @@ export default defineConfig({
 
   themeConfig: {
     logo: { light: '/logo-mark.png', dark: '/logo-mark-white.png' },
-    siteTitle: '文档',
+    siteTitle: 'ClassIntra',
 
     search: {
       provider: 'local',
