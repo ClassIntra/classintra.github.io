@@ -8,7 +8,8 @@ export default defineConfig({
   ignoreDeadLinks: true,
 
   head: [
-    ['link', { rel: 'icon', href: '/logo.png' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+    ['link', { rel: 'apple-touch-icon', href: '/logo-mark-square.png' }],
     ['meta', { name: 'theme-color', content: '#0947FA' }],
     ['meta', { name: 'og:type', content: 'website' }],
     ['meta', { name: 'og:title', content: 'ClassIntra 文档' }],
@@ -16,7 +17,7 @@ export default defineConfig({
   ],
 
   themeConfig: {
-    logo: '/logo-d.png',
+    logo: { light: '/logo-mark.png', dark: '/logo-mark-white.png' },
     siteTitle: '文档',
 
     search: {
