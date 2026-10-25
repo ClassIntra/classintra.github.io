@@ -38,7 +38,7 @@ ClassIntra 使用 pnpm workspace 管理 monorepo，根目录 `package.json` 中�
 # 1. 全新部署
 pnpm install
 cp server/.env.example server/.env
-# 编辑 .env 至少设置 JWT_SECRET
+# 编辑 .env（JWT 签发自 v1.4.0 起为 RS256，私钥缺省自动生成于 server/keys/；JWT_SECRET 仅用于旧 token 过渡兜底）
 
 # 2. 开发
 pnpm dev
@@ -283,8 +283,8 @@ ClassIntra 使用 `server/version.json` 管理版本，由 `client/scripts/prebu
 
 ```json
 {
-  "version": "1.0.5",
-  "lastBuiltVersion": "1.0.4",
+  "version": "1.5.0",
+  "lastBuiltVersion": "1.4.1",
   "buildHash": "l1a2b3c4d5e6f7g8",
   "buildTime": "2025-08-21T08:00:00.000Z",
   "changelog": "fix: 修复 WebSocket 断线重连\nfeat: 添加主题切换快捷键",
@@ -310,7 +310,7 @@ ClassIntra 使用 `server/version.json` 管理版本，由 `client/scripts/prebu
 `prebuild.js` 在每次 `pnpm build` 时执行：
 
 1. 读取 `version.json` 当前版本
-2. **PATCH 自动 +1**（如 `1.0.4` → `1.0.5`）
+2. **PATCH 自动 +1**（如 `1.5.0` → `1.5.1`）
 3. 若 MAJOR 或 MINOR 变化（手动修改），PATCH 归零
 4. 从 `git log` 提取自上次构建以来的 commit message 生成 changelog
 5. 写入 `buildHash`、`buildTime`、`changelog`
@@ -347,10 +347,10 @@ curl -X POST http://localhost:9001/api/system/set-version \
   -H "Authorization: Bearer <admin-jwt>" \
   -H "Content-Type: application/json" \
   -d '{
-    "version": "1.0.5",
+    "version": "1.5.0",
     "forceUpdate": true,
     "changelog": "紧急修复：修复 JWT 泄露漏洞，请立即更新",
-    "minClientVersion": "1.0.5"
+    "minClientVersion": "1.5.0"
   }'
 ```
 

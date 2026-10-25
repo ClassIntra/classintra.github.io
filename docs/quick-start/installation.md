@@ -89,11 +89,10 @@ git clone https://ghproxy.com/https://github.com/ClassIntra/ClassIntra.git
 ```
 ClassIntra/
 ├── apps/                    # 应用（前端页面 + 可选后端 + 小组件）
-│   ├── ai-chat/             # AI 对话
 │   ├── chat/                # 即时通讯
 │   ├── community/           # 社区论坛
 │   ├── music/               # 音乐播放
-│   ├── notes/               # Markdown 笔记
+│   ├── profile/             # 个人主页
 │   ├── resource/            # 资源仓库 + 云盘
 │   ├── weather/             # 天气系统
 │   ├── settings/            # 个人设置
@@ -160,11 +159,14 @@ ClassIntra 通过 `server/.env` 读取配置，首次安装需从模板复制：
 cp server/.env.example server/.env
 ```
 
-### 必填变量
+### 认证密钥（RS256）
+
+自 v1.4.0 起 JWT 采用 RS256 非对称签名：首次启动时若 `server/keys/jwt-private.pem` 不存在，服务端会自动生成 RSA-2048 密钥对（公钥落 `server/keys/jwt-public.pem`，私钥不出本机），通常**无需手动配置任何密钥**。
 
 | 变量 | 说明 | 示例 |
 |------|------|------|
-| `JWT_SECRET` | JWT 签名密钥（≥ 32 字符随机串） | `your-secure-random-string-at-least-32-chars` |
+| `JWT_PRIVATE_KEY` | 可选，RSA 私钥（PEM 文本或文件路径），缺省读取 `server/keys/jwt-private.pem` | `server/keys/jwt-private.pem` |
+| `JWT_SECRET` | 过渡期兜底：用于验证旧的 HS256 token；私钥不可用且该项为空时拒绝签发 token | `your-secure-random-string-at-least-32-chars` |
 
 ### 常用变量
 
@@ -172,13 +174,10 @@ cp server/.env.example server/.env
 |------|------|------|
 | `ADMIN_USER_IDS` | 班管 ID（逗号分隔，格式 `YYCC00`） | `250100` 或 `250100,250200` |
 | `QWEATHER_KEY` | 和风天气 API Key | `your-qweather-api-key` |
-| `AI_API_KEY` | AI 服务 API Key（OpenAI 兼容） | `your-ai-api-key` |
-| `DEEPSEEK_API_KEY` | DeepSeek API Key | `your-deepseek-api-key` |
-| `TAVILY_API_KEY` | Tavily 联网搜索 API Key | `your-tavily-api-key` |
 | `DEV_PASSWORD` | 开发者测试账号密码（ID: 999999） | `dev123456` |
 | `COHORT` | 届数（跨班级中继过滤） | `25` |
 
-编辑 `server/.env` 文件，至少设置 `JWT_SECRET`：
+编辑 `server/.env` 文件（默认无需配置密钥，RS256 密钥对首次启动自动生成）：
 
 ```bash
 # 编辑 .env
@@ -186,10 +185,9 @@ cp server/.env.example server/.env
 # macOS / Linux: nano server/.env
 ```
 
-::: warning JWT_SECRET 必须设置
-`JWT_SECRET` 是 JWT 签名密钥，**必须**设置为 ≥ 32 字符的随机串。若保留模板默认值或留空，服务启动时会被拒绝。可使用以下命令生成：
+::: warning JWT 密钥说明（RS256）
+`JWT_SECRET` 不再是必填项：RS256 密钥对会在首次启动时自动生成到 `server/keys/`。`JWT_SECRET` 仅用于过渡期验证旧的 HS256 token 与兜底——仅当私钥不可用且 `JWT_SECRET` 为空时才会拒绝签发 token（表现为登录失败）。若需手动设置，可使用以下命令生成 32 字符随机串：
 ```bash
-# 生成 32 字符随机串
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 :::
@@ -210,7 +208,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ClassIntra 使用 `better-sqlite3` 嵌入式数据库，**无需手动创建**。首次启动后端时，`server/src/utils/init-db.js` 会自动：
 
 1. 在 `server/database/` 目录创建 SQLite 数据库文件（默认 `classintra.db`）
-2. 创建所有数据表（users、messages、posts、files、notes、settings 等）
+2. 创建所有数据表（users、messages、posts、files、settings 等）
 3. 执行迁移脚本（`server/src/migrations/`，按版本号顺序）
 4. 导入预注册名单（若 `server/config/pre-records.json` 存在）
 
@@ -322,11 +320,11 @@ cd server && NODE_ENV=production node src/app.js
 
 项目 `.npmrc` 已配置 `build_from_source=false` 优先使用预编译包，正常情况下不会触发编译。
 
-### Q2：服务启动报 `JWT_SECRET is required`
+### Q2：登录失败，日志提示无法签发 token
 
-**原因**：未设置 `JWT_SECRET` 或保留模板默认值。
+**原因**：RS256 私钥不可用（如 `server/keys/` 目录被删除或损坏后未能重新生成）且 `JWT_SECRET` 为空，服务端会拒绝签发 token。
 
-**解决**：编辑 `server/.env`，将 `JWT_SECRET` 设置为 ≥ 32 字符的随机串：
+**解决**：确保 `server/keys/` 目录可写（正常情况下首次启动会自动生成密钥对），或在 `server/.env` 中设置 `JWT_SECRET` 作为兜底：
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```

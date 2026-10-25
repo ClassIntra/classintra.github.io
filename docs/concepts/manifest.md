@@ -107,15 +107,11 @@ description: ClassIntra 应用清单（manifest.json）规范，包含完整 Sch
 
 ```json
 {
-  "name": "notes",
-  "label": "笔记",
+  "name": "profile",
+  "label": "个人主页",
   "frontend": {
-    "route": "/notes",
-    "component": "./frontend/Notes.vue"
-  },
-  "backend": {
-    "mountPath": "/api/notes",
-    "entry": "./backend/routes.js"
+    "route": "/profile/:userId",
+    "component": "./frontend/Profile.vue"
   }
 }
 ```
@@ -339,8 +335,9 @@ manifest.json 中所有 `component` / `entry` 路径都是**相对 manifest.json
 每个应用通过 `app_control` 表（`app_name` + `enabled`）控制启用/禁用：
 
 - **初始化**：`init-db.js` 调用 `default-apps-loader.getDefaultApps()`，把所有 `defaultEnabled !== false` 的应用写入 `app_control` 表（`INSERT OR IGNORE`，避免覆盖管理员修改）
+- **名单动态生成**：管理端管控名单经 manifest-loader 动态扫描 `apps/*/manifest.json`（`category=desktop`）生成，「可否禁用」直接取 manifest 的 `canDisable`；市场已安装应用经 `listInstalled` 合并进名单
 - **前端路由守卫**：`router/index.js` 的 `beforeEach` 通过 `ROUTE_APP_MAP` 检查当前路由对应的应用是否启用，未启用则跳转到桌面
-- **管理员管控**：管理员可通过 `/api/admin/app-control` 远程启用/禁用应用，前端缓存通过 `router.clearAppControlCache()` 清除
+- **管理员管控**：管理员可通过 `GET /api/admin/app-control` / `PUT /api/admin/app-control/:appName` 远程启用/禁用应用，前端缓存通过 `router.clearAppControlCache()` 清除
 - **超能岛浏览器**：例外，不通过应用管控，改为 per-user `browser_enabled` 字段控制
 
 详见 [应用管控](./app-control)。
@@ -352,6 +349,8 @@ manifest.json 中所有 `component` / `entry` 路径都是**相对 manifest.json
 | 1.0 | 初始规范：`name` / `label` / `icon` / `color` / `category` / `order` / `defaultEnabled` / `canDisable` / `frontend` / `backend` |
 | 1.1 | 新增 `extraBackends`（阶段 0：云盘合并到资源仓库） |
 | 1.2 | 新增 `type` / `version` 字段（阶段 3：对齐 Ditto 规范） |
+| 1.3 | 新增 `config` 字段：应用配置声明与管理端引导配置（安装时检测必填项、读写 `app_config` 表） |
+| 1.5 | 应用管控名单改由 manifest 动态生成（扫描 `category=desktop` 应用、`canDisable` 决定可否禁用，不再有硬编码名单） |
 
 ## 相关文档
 

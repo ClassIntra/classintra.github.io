@@ -405,7 +405,7 @@ getThemeEngine().setDynamicColor('#0061A4');
 | 分类 | 子分类 | 说明 |
 |------|--------|------|
 | `color.primary` | primary / primaryHover / primaryPressed / primaryRgb / primaryLight | 主色及衍生 |
-| `color.accent` | music / weather / community / chat / notes / resource / settings / ai | 应用主题色 |
+| `color.accent` | music / weather / community / chat / resource / settings | 应用主题色 |
 | `color.semantic` | success / warning / danger / info | 语义色 |
 | `color.bg` | base / card / elevated / glass | 背景色 |
 | `color.text` | primary / secondary / tertiary | 文字色 |

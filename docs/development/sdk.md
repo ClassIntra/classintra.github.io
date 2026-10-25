@@ -84,7 +84,7 @@ var off = context.app.onDestroy(function () {
 #### `context.data.realtime`
 
 ::: danger 禁止直接使用 `new WebSocket(...)`
-腾讯 X5/TBS 与旧版 Android WebView 的长连接会静默断开且不触发 `close`。ClassIntra 统一封装为 HTTP 长轮询，**必须**通过此通道收实时事件。
+腾讯 X5/TBS 与旧版 Android WebView 的长连接会静默断开且不触发 `close`。ClassIntra 已将实时事件统一封装为 `context.data.realtime`：内部复用核心 WS 连接（WebSocket 优先），在 X5/TBS/不支持时自动降级为 HTTP 长轮询。**必须**通过此通道收实时事件，请勿自行建立 WebSocket。
 :::
 
 | 方法 | 签名 | 说明 |
@@ -399,7 +399,7 @@ bus.off('user:login', handler);
 
 ### Realtime
 
-第三方应用通过 `context.realtime` 使用全局 HTTP 长轮询实时事件，不依赖 Chat 应用，也不要求浏览器支持 WebSocket，适合腾讯 X5、TBS 和旧版 Android WebView。
+第三方应用通过 `context.realtime` 使用全局实时事件：内部复用核心 WS 连接（WebSocket 优先），不依赖 Chat 应用；在腾讯 X5、TBS 和旧版 Android WebView 等 WS 不可靠的环境会自动降级为 HTTP 长轮询。因此第三方**无需也不应**自行建立 WebSocket。
 
 | 方法 | 签名 | 说明 |
 |------|------|------|
@@ -540,23 +540,24 @@ import { getSearchRegistry } from '@/core/search-registry';
 
 var search = getSearchRegistry();
 
-// 注册搜索源
+// 注册搜索源（以社区帖子搜索为例：GET /api/community/search?q= 返回 data.posts）
 var unregister = search.registerProvider({
-  id: 'notes-search',
-  category: '笔记',
+  id: 'community-search',
+  category: '社区',
   search: function(query) {
-    return fetch('/api/notes/search?q=' + encodeURIComponent(query))
+    return fetch('/api/community/search?q=' + encodeURIComponent(query))
       .then(function(r) { return r.json(); })
       .then(function(res) {
-        return res.data.items.map(function(item) {
+        return res.data.posts.map(function(post) {
           return {
-            id: 'note-' + item.id,
-            title: item.title,
-            description: item.preview,
-            icon: '/resources/public/icons/Note.svg',
-            category: '笔记',
+            id: 'post-' + post.id,
+            title: post.title,
+            description: post.content,
+            icon: '/resources/public/icons/Community.svg',
+            category: '社区',
             action: function() {
-              window.location.hash = '#/notes/' + item.id;
+              // 跳转到社区应用；是否深链到具体帖子取决于应用自身路由
+              window.location.hash = '#/community';
             }
           };
         });
@@ -566,13 +567,13 @@ var unregister = search.registerProvider({
 
 // 注册命令
 search.registerCommand({
-  id: 'cmd-new-note',
-  title: '新建笔记',
-  description: '快速创建一篇笔记',
-  icon: '/resources/public/icons/Note.svg',
-  keywords: ['新建', '笔记', 'new', 'note'],
+  id: 'cmd-open-community',
+  title: '打开社区',
+  description: '跳转到社区应用',
+  icon: '/resources/public/icons/Community.svg',
+  keywords: ['社区', '帖子', 'community'],
   action: function() {
-    window.location.hash = '#/notes/new';
+    window.location.hash = '#/community';
   }
 });
 

@@ -25,7 +25,7 @@ hero:
 features:
   - icon: 🖥️
     title: 桌面系统
-    details: 类 iOS 启动台，应用图标分页排列、壁纸切换、锁屏密码、通知中心（超能岛），专为横屏平板优化。
+    details: 类 iOS 启动台，应用图标分页排列、壁纸切换、锁屏、通知中心（超能岛），专为横屏平板优化。
     link: /quick-start/basic-usage
     linkText: 基本使用 →
   - icon: 💬
@@ -33,11 +33,11 @@ features:
     details: 公共聊天、班级群聊（自动建群）、私聊、表情、消息撤回、群公告，基于 WebSocket 实时通信。
     link: /concepts/websocket
     linkText: WebSocket 通信 →
-  - icon: 🤖
-    title: AI 对话
-    details: OpenAI 兼容 / DeepSeek 双引擎，Tavily 联网搜索，LaTeX 数学公式渲染，支持子模型切换。
-    link: /development/
-    linkText: 开发指南 →
+  - icon: 👤
+    title: 个人主页
+    details: 从聊天、社区头像点入的个人详情页：封面大图、头像、统计数据、帖子流与关注操作一览。
+    link: /quick-start/basic-usage
+    linkText: 基本使用 →
   - icon: 📝
     title: 社区论坛
     details: 发帖、评论、点赞、收藏、Markdown + LaTeX 渲染，签到、发帖获取经验与排行榜。
@@ -53,11 +53,11 @@ features:
     details: 在线播放列表、LRC 歌词同步、背景播放、超能岛快捷控制。
     link: /quick-start/basic-usage
     linkText: 基本使用 →
-  - icon: 📒
-    title: 笔记系统
-    details: Markdown 编辑器、代码高亮、Mermaid 流程图、KaTeX 数学公式，前后端同步。
-    link: /ui/
-    linkText: UI & 主题 →
+  - icon: 🌐
+    title: 超能岛浏览器
+    details: 内嵌网页浏览 + 服务端无头渲染的兼容模式，Chrome 80 / X5 等老内核平板也能打开网页。
+    link: /quick-start/basic-usage
+    linkText: 基本使用 →
   - icon: ⚙️
     title: 管理后台
     details: 用户管理、广播通知、班干委任、应用管控（远程启用/禁用桌面应用）、操作日志。
@@ -97,7 +97,7 @@ ClassIntra 为班级教室场景而生 —— 一台服务器 + 一台平板 = �
 - **校园内网优先**：局域网即可运行，无需外网，数据不出校
 - **横屏平板优化**：专为 960×600 横屏平板设计，触控优先，最小触摸区域 44px
 - **类 iOS 设计**：自研 `ios/` 组件库，启动台、Dock 栏、超能岛通知中心
-- **完整班级生态**：桌面系统、即时通讯、AI 对话、社区论坛、资源仓库、音乐、笔记、管理后台 8 大模块
+- **完整班级生态**：聊天、社区、云盘、音乐、课表、日历、天气、计算器等十余个内置应用，覆盖班级日常
 - **跨班级联动**：WebSocket 中继实现多班级公共聊天室实时同步（支持 Tailscale 组网）
 - **应用管控**：管理员/班干可远程启用或禁用桌面上的每个应用
 - **Chrome 80 兼容**：通过 `@vitejs/plugin-legacy` 适配老旧教育终端
@@ -113,7 +113,7 @@ ClassIntra 为班级教室场景而生 —— 一台服务器 + 一台平板 = �
 | **后端框架** | Express 4 |
 | **数据库** | better-sqlite3（嵌入式，零配置） |
 | **实时通信** | ws（WebSocket） |
-| **认证** | JWT（jsonwebtoken + bcryptjs） |
+| **认证** | JWT（RS256 非对称签名，jsonwebtoken + bcryptjs） |
 | **Markdown** | marked + highlight.js + KaTeX + Mermaid |
 | **视频** | 自研流式转码（ffmpeg + fragmented MP4）+ Video.js |
 | **包管理** | pnpm workspace（monorepo） |
@@ -144,7 +144,7 @@ pnpm install
 
 # 3. 配置环境变量
 cp server/.env.example server/.env
-# 编辑 server/.env，至少设置 JWT_SECRET（必填，否则拒绝启动）
+# 编辑 server/.env（可选：RS256 密钥对首次启动自动生成，JWT_SECRET 仅作过渡/兜底）
 
 # 4. 启动开发服务器（前后端并行）
 pnpm dev

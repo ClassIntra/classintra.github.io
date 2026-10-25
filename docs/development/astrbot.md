@@ -184,7 +184,9 @@ ASTRBOT_PUBLISH_KEY=改成长随机串 # 站内接口共享密钥（与 AstrBot 
 AstrBot 工具 classintra_admin
   → CI POST /api/astrbot/manage（op 名 + 参数，无路径注入）
   → manage.js 按 OPS 白名单解析为 { method, path, body }
-  → 自签机器人 JWT 打本机 /api/admin/*
+  → 经 CI 自带 jwt 工具给机器人账号签发短期令牌（插件与服务器同进程加载，
+    RS256 私钥不出本机；令牌缓存 5 分钟）
+  → 携 Bearer 短期令牌打本机 /api/admin/*
   → 复用 CI 原有 WS 广播 / 墓碑 / 水位 / 审计，零逻辑漂移
 ```
 

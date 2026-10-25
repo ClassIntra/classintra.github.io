@@ -1,11 +1,11 @@
 ---
 title: 认证与权限
-description: ClassIntra 认证与权限系统，包含 JWT 签发与校验流程、requireAuth 中间件工作原理、权限分级表格（管理员/班管/班干/普通用户）、用户 ID 格式（YYCCNN：届+班+序号）、预注册名单机制、班管自动授权流程以及路由守卫与前端权限检查。
+description: ClassIntra 认证与权限系统，包含 JWT（RS256 非对称签名）签发与公钥验签流程、requireAuth 中间件工作原理、权限分级表格（管理员/班管/班干/普通用户）、用户 ID 格式（YYCCNN：届+班+序号）、预注册名单机制、班管自动授权流程以及路由守卫与前端权限检查。
 ---
 
 # 认证与权限
 
-ClassIntra 采用 **JWT + Cookie** 双通道认证，权限分级基于**用户 ID 格式**（`YYCCNN`：届+班+序号）和**数据库字段**（`is_admin` / `role` / `officer_permissions`）共同判定。预注册名单机制确保只有名单内学生才能注册，班管通过 ID 末两位 `00` 自动获得本班管理权限。
+ClassIntra 采用 **JWT（RS256 非对称签名）+ Cookie** 双通道认证，权限分级基于**用户 ID 格式**（`YYCCNN`：届+班+序号）和**数据库字段**（`is_admin` / `role` / `officer_permissions`）共同判定。预注册名单机制确保只有名单内学生才能注册，班管通过 ID 末两位 `00` 自动获得本班管理权限。
 
 源码位置：`server/src/utils/jwt.js`、`server/src/middleware/auth.js`、`server/src/routes/auth.js`、`server/src/utils/constants.js`
 
@@ -15,22 +15,49 @@ ClassIntra 采用 **JWT + Cookie** 双通道认证，权限分级基于**用户 
 
 源码：`server/src/utils/jwt.js`
 
-```javascript
-var jwt = require('jsonwebtoken');
-var config = require('../config');
+自 v1.4.0 起，JWT 签发一律使用 **RS256 非对称签名**：私钥只留在本机用于签发，公钥用于验签、可分发给需要校验 CI token 的外部服务（如 Cluss）。
 
+```javascript
+// 签发：一律 RS256 私钥签名
 function generateToken(userInfo) {
-  return jwt.sign(userInfo, config.jwt.secret, { expiresIn: config.jwt.expiresIn });
+  var keys = getKeys();                    // 密钥来源见下节
+  return jwt.sign(userInfo, keys.privateKey, { algorithm: 'RS256', expiresIn: config.jwt.expiresIn });
 }
 
+// 校验：先走非对称算法白名单公钥验签，失败再退 HS256 共享密钥（兼容旧 token）
+var ASYMMETRIC_ALGS = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384', 'ES512'];
+
 function verifyToken(token) {
+  var keys = getKeys();
   try {
+    // 显式 algorithms 白名单，防 alg 混淆/降级攻击
+    return { valid: true, data: jwt.verify(token, keys.publicKey, { algorithms: ASYMMETRIC_ALGS }) };
+  } catch (err) { /* 非本系统私钥签发 → 继续尝试共享密钥 */ }
+  try {
+    // HS256 兜底：过渡期唯一还在走的路径，旧 token 平滑过渡不登出
     return { valid: true, data: jwt.verify(token, config.jwt.secret) };
   } catch (err) {
     return { valid: false, data: null };
   }
 }
 ```
+
+::: tip 为什么必须锁定算法白名单
+非对称验签若不显式指定 `algorithms`，攻击者可把 RS256 token 改用 HS256 重签——因为 HS256 的「密钥」就是公开可得的公钥文本（alg 混淆漏洞）。白名单验签失败后仅退 HS256 共享密钥一条路径，专门用于兼容切换前签发的旧 token。
+:::
+
+### 密钥来源与配置
+
+| 配置项 | 必填 | 说明 |
+|--------|------|------|
+| `JWT_PRIVATE_KEY` | ❌ 可选注入 | RSA 私钥，PEM 文本（`.env` 中换行写 `\n`）或 PEM 文件路径 |
+| `server/keys/jwt-private.pem` | — | 未注入时的默认私钥；不存在则**首次启动自动生成 RSA-2048 密钥对**（公钥落 `server/keys/jwt-public.pem`），之后一直复用 |
+| `JWT_PUBLIC_KEY` | ❌ 可选 | 显式指定公钥（特殊部署场景）；必须与私钥同源，否则验签静默失败（服务端会输出警告） |
+| `JWT_SECRET` | ❌ 过渡期兜底 | 仅用于验证切换前签发的旧 HS256 token + 极端情况兜底；**不再是「唯一必填项」**——零配置部署无需设置任何 JWT 环境变量 |
+
+- **私钥不出本机**：其他服务需要验 CI token 时，把 `server/keys/jwt-public.pem` 交给对方（Cluss 就是这么做的）
+- 私钥不可用（连自动生成都失败，如只读文件系统）且 `JWT_SECRET` 为空时，服务端**拒绝签发** token 并留下明确日志，绝不以空密钥签名
+- HS256 兜底命中会按 `user_id` 节流输出 warn 日志——连续一个 token 有效期（7 天）无此日志，即可安全清空 `JWT_SECRET` 收紧为只认公钥
 
 ### JWT Payload 结构
 
@@ -97,9 +124,11 @@ ClassIntra 同时支持 Cookie 和 Bearer Token 两种方式传递 JWT：
     ↓
 constants.extractToken(req) 提取 token
     ↓
-jwt.verify(token, config.jwt.secret)
+jwtUtil.verifyToken：非对称白名单公钥验签（RS256/RS384/RS512/ES256/ES384/ES512）
     ↓
-失败 → 401 '登录已过期'
+失败 → 退 HS256 共享密钥（JWT_SECRET，兼容旧 HS256 token）
+    ↓
+仍失败 → 401 '登录已过期'
     ↓
 成功 → req.user = decoded（写入用户信息）
     ↓
@@ -124,16 +153,16 @@ function requireAuth(req, res, next) {
   if (!token) {
     return res.status(401).json({ code: 401, message: '未登录' });
   }
-  try {
-    var decoded = jwt.verify(token, config.jwt.secret);
-    req.user = decoded;
-    req.user.is_class_admin = constants.isClassAdmin(req.user.user_id);
-    // 查数据库补充 role / officer_permissions / status
-    // 处理 status === 'disabled' 的自动解封
-    next();
-  } catch (err) {
+  // verifyToken 不抛异常、返回 { valid, data }（内部先公钥白名单验签，再退共享密钥）
+  var result = jwtUtil.verifyToken(token);
+  if (!result.valid) {
     return res.status(401).json({ code: 401, message: '登录已过期' });
   }
+  req.user = result.data;
+  req.user.is_class_admin = constants.isClassAdmin(req.user.user_id);
+  // 查数据库补充 role / officer_permissions / status
+  // 处理 status === 'disabled' 的自动解封
+  next();
 }
 ```
 
@@ -426,8 +455,9 @@ function getEnabledApps() {
     enabledAppsLoading = null;
     return enabledAppsCache;
   }).catch(function() {
-    // 降级：全部启用
-    enabledAppsCache = ['chat', 'community', 'ai-chat', 'notes', 'resource', ...];
+    // 降级：全部启用（名单动态来自本地 manifest 聚合，无硬编码兜底名单）
+    enabledAppsCache = loadManifests().map(function(m) { return m.name; });
+    enabledAppsLoading = null;
     return enabledAppsCache;
   });
   return enabledAppsLoading;
@@ -473,6 +503,12 @@ function proceedWithAdminCheck(to, next) {
 ## 跨班登录与账号切换
 
 多班部署（relay 联动）场景下，A 班设备可以登录 B 班账号（本地查不到该账号时，向配置的对端发起 `POST /api/auth/relay-verify` 验证，成功后把对端用户写入本地 `users` 表）。
+
+::: info relay-verify 的鉴权方式
+`relay-verify` 对端以 `RELAY_SECRET` 做 HTTP 头认证（请求头 `X-Relay-Secret` == `RELAY_SECRET`）——不存在「共享 JWT 密钥联登」；CI token 的跨系统验签已改为**公钥分发**（把 `server/keys/jwt-public.pem` 交给对方，如 Cluss），详见上文[密钥来源与配置](#密钥来源与配置)。
+
+`RELAY_SECRET` 同时用于：跨班 Relay 消息同步、relay-verify、Cluss 联动桥鉴权（`X-Bridge-Secret` 同值）。
+:::
 
 ### 账号匹配顺序
 

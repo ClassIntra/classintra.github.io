@@ -1,12 +1,12 @@
 ---
 title: 联机五子棋开发
-description: ClassIntra Gomoku 联机五子棋完整开发文档：联机模型、房间 HTTP API、全局 HTTP 实时事件、WebSocket 兼容协议、规则与错误恢复、调试清单。
+description: ClassIntra Gomoku 联机五子棋完整开发文档：联机模型、房间 HTTP API、实时事件通道（WS 优先，长轮询兜底）、WebSocket 兼容协议、规则与错误恢复、调试清单。
 outline: [2, 3]
 ---
 
 # 联机五子棋开发
 
-本文档对应 `market-apps/gomoku` 的真实路由、SQLite 状态和实时事件。示例使用占位 Token，不包含真实凭据。当前五子棋前端优先使用房间 HTTP API 与全局 HTTP 长轮询，旧 WebSocket 房间事件仅作为兼容协议保留。
+本文档对应 `market-apps/gomoku` 的真实路由、SQLite 状态和实时事件。示例使用占位 Token，不包含真实凭据。当前五子棋前端优先使用房间 HTTP API 与全局实时事件通道（`context.realtime`，复用核心 WS 连接、长轮询兜底），旧 WebSocket 房间事件仅作为兼容协议保留。
 
 ## 联机模型
 
@@ -100,7 +100,7 @@ var room = await gomokuRequest('/api/gomoku/rooms', {
 await gomokuRequest('/api/gomoku/rooms/' + room.roomCode + '/join', { method: 'POST' })
 ```
 
-## 全局 HTTP 实时同步
+## 实时事件通道（WS 优先，长轮询兜底）
 
 五子棋市场应用应通过市场应用上下文中的 `context.realtime` 接入全局实时通道，不要自行创建 `WebSocket`。该通道不依赖 Chat 应用，腾讯 X5、TBS 和旧版 Android WebView 也可以使用。
 
@@ -117,7 +117,7 @@ context.realtime.publish('gomoku.room.changed', {
 unsubscribe();
 ```
 
-实时接口包括 `connect()`、`subscribe(event, handler)`、`publish(event, payload, appName)`、`disconnect()` 和 `isReady()`。底层接口为 `/api/realtime/poll/register`、`/api/realtime/poll`、`/api/realtime/publish` 和 `/api/realtime/poll/unregister`。
+实时接口包括 `connect()`、`subscribe(event, handler)`、`publish(event, payload, appName)`、`disconnect()` 和 `isReady()`。自 v1.4.0 起优先走核心 WS 连接（上行 `realtime_publish` / 下行 `extension_event`），无 WS 环境自动退回以下 HTTP 轮询端点：`/api/realtime/poll/register`、`/api/realtime/poll`、`/api/realtime/publish` 和 `/api/realtime/poll/unregister`。
 
 五子棋的创建、加入、观战、落子、重开和离开都使用 `/api/gomoku/rooms/...` HTTP API。HTTP 响应是最终状态来源，事件丢失时重新 GET 房间即可恢复。
 

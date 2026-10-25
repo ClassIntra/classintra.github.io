@@ -341,10 +341,9 @@ ClassIntra 各应用的前端界面位于 `apps/<name>/frontend/`，作为独立
 | 应用 | 组件路径 | 用途 |
 |------|---------|------|
 | 聊天系统 | `apps/chat/frontend/Chat.vue` | 公共聊天、私聊、群聊界面 |
-| AI 对话 | `apps/ai-chat/frontend/AIChat.vue` | AI 对话界面（多模型切换） |
+| 个人主页 | `apps/profile/frontend/Profile.vue` | 个人主页：封面大图、头像、统计、帖子流与关注操作（从聊天/社区头像进入） |
 | 社区论坛 | `apps/community/frontend/Community.vue` | 帖子列表、详情、发帖编辑器 |
 | 云盘 | `apps/resource/frontend/CloudDrive.vue` | 文件浏览、上传、视频播放 |
-| 笔记 | `apps/notes/frontend/Notes.vue` | Markdown 编辑器、目录树 |
 | 音乐播放器 | `apps/music/frontend/Music.vue` | 播放列表、LRC 歌词同步 |
 | 天气 | `apps/weather/frontend/Weather.vue` | 天气卡片、空气质量、降雨提醒 |
 | 计算器 | `apps/calculator/frontend/Calculator.vue` | 科学计算器 |

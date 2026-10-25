@@ -120,8 +120,8 @@ curl http://localhost:9001/api/system/heartbeat
   "code": 200,
   "data": {
     "status": "running",
-    "version": "1.0.0",
-    "minClientVersion": "1.0.0",
+    "version": "1.5.0",
+    "minClientVersion": "1.5.0",
     "forceUpdate": false,
     "action": "none",
     "timestamp": 1692604200000
@@ -141,10 +141,10 @@ curl http://localhost:9001/api/system/version
 {
   "code": 200,
   "data": {
-    "version": "1.0.0",
+    "version": "1.5.0",
     "buildHash": "l1a2b3c4d5e6f7g8",
     "buildTime": "2025-08-21T08:00:00.000Z",
-    "minClientVersion": "1.0.0",
+    "minClientVersion": "1.5.0",
     "changelog": "fix: 修复聊天断线重连",
     "forceUpdate": false,
     "updateUrl": "",
@@ -366,7 +366,7 @@ netstat -ano | findstr :9001  | findstr ESTABLISHED | find /c ":"
 
 | 症状 | 可能原因 | 排查方法 | 解决方案 |
 |------|---------|---------|---------|
-| 服务无法启动 | `JWT_SECRET` 未设置 | `pm2 logs --err` | 编辑 `.env` 设置 ≥32 字符随机串 |
+| 无法登录（token 签发失败） | JWT 私钥不可用且 `JWT_SECRET` 为空 | `pm2 logs --err` 查看 `[jwt]` 输出 | 检查 `server/keys/` 密钥对或 `JWT_PRIVATE_KEY`，或补设 `JWT_SECRET` |
 | 服务无法启动 | 端口被占用 | `netstat -ano \| findstr :9001` | 修改 `PORT` 或结束占用进程 |
 | 服务无法启动 | `better-sqlite3` 加载失败 | `pm2 logs --err` | 重新 `pnpm install`，确认 Node ≥18 |
 | 前端白屏 | 后端未启动 | `curl http://localhost:9001/api/system/health` | 启动后端服务 |
@@ -374,7 +374,7 @@ netstat -ano | findstr :9001  | findstr ESTABLISHED | find /c ":"
 | WebSocket 连接失败 | WS_PORT 被防火墙拦截 | `telnet localhost 10001` | 开放 10001 端口 |
 | 跨班消息不同步 | `RELAY_SECRET` 不一致 | 检查各节点 `.env` | 统一密钥后重启 |
 | 跨班消息不同步 | `COHORT` 届数不匹配 | 对比各节点 `COHORT` | 设置为相同届数 |
-| AI 聊天报错 | `AI_API_KEY` 无效 | `pm2 logs --err` 查看 401 | 检查 API Key 与 URL |
+| 兼容模式无法启动 | 本机无 Edge/Chrome，`render.available=false` | 访问 `GET /api/web-proxy/status` 查看 `render.available` | 本机安装 Edge 或 Chrome（无需下载 Chromium） |
 | 天气加载失败 | `QWEATHER_KEY` 无效 | `pm2 logs --err` | 重新申请 Key |
 | 内存持续增长 | 可能泄漏 | `pm2 monit` 长期观察 | 重启服务，反馈 issue |
 | 数据库锁定 | 长事务阻塞 | `sqlite3 .db ".databases"` | 重启服务，启用 WAL |
@@ -478,6 +478,7 @@ tar -czf /backup/classintra-full-$(date +%Y%m%d).tar.gz \
   server/database/ \
   server/config/pre-records.json \
   server/.env \
+  server/keys/ \
   Resources/
 
 # 仅资源
@@ -531,8 +532,9 @@ curl http://localhost:9001/api/system/health
 
 **权限**
 - ✅ `server/.env` 文件权限 600（仅属主）
+- ✅ `server/keys/` 目录（JWT 私钥）权限 600，仅本机可见
 - ✅ `server/database/` 目录权限 700
-- ✅ 备份文件加密存储（含 JWT_SECRET 等敏感信息）
+- ✅ 备份文件加密存储（含 `server/.env`、`server/keys/` JWT 私钥等敏感信息）
 
 **传输**
 - ✅ 远程备份走 SFTP / SCP，禁止明文 FTP

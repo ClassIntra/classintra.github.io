@@ -28,7 +28,7 @@ ClassIntra 校园内网 WebOS 提供两套互补的 API，分别面向**前端�
 | 板块 | 内容要点 |
 |------|----------|
 | [前端 API 参考](./client) | ServiceRegistry、ThemeEngine、EventBus、HotkeyManager、SearchRegistry、PersistenceStore 及 utils/api.js、utils/websocket.js 使用示例 |
-| [服务端 API 参考](./server) | 认证、用户、管理、初始化、资源、等级、CDN 代理、系统、集成 9 大路由模块的端点表与请求/响应示例 |
+| [服务端 API 参考](./server) | 认证、用户、管理、初始化、资源、等级、CDN 代理、系统、市场、集成等路由模块的端点表与请求/响应示例 |
 | [类型定义](./types) | 数据库表结构、Manifest Schema、WebSocket 消息格式、API 响应格式、环境变量、错误码常量 |
 
 ## 阅读约定

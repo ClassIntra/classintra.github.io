@@ -28,6 +28,8 @@ https://raw.githubusercontent.com/ClassIntra/market/main/index.json
 https://raw.githubusercontent.com/ClassIntra/market/main/apps/gomoku/manifest.json
 ```
 
+catalog 读取接口（`GET /api/market/catalog`）自 **v1.3.0 起需要登录**——由服务端代拉并自动附带 Bearer Token，客户端无需额外处理。
+
 应用文件下载到班级服务器的本地运行时目录后，前端和后端都从本地加载。GitHub 只承担公开文件托管和版本来源，ClassIntra 负责安装、缓存、更新和卸载。
 
 ## 安装流程

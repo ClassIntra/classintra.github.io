@@ -57,6 +57,7 @@ ClassIntra 默认占用以下端口，部署前请确认未被占用：
 | 端口 | 协议 | 服务 | 配置项 | 默认值 |
 |------|------|------|--------|--------|
 | **9001** | HTTP | REST API + 静态前端 | `PORT` | 9001 |
+| **9443** | HTTPS | HTTPS 服务（PM2 `classintra-https` 镜像实例） | `HTTPS_PORT` | 9443 |
 | **10001** | WebSocket | 实时通讯（聊天、桌面、超能岛） | `WS_PORT` | 10001 |
 | **10011** | TCP | 跨机 Relay 中继 | `RELAY_PORT` | 10011 |
 | **5001** | HTTP | Vite Dev Server（仅开发模式） | `vite.config.mjs` | 5001 |
@@ -73,8 +74,12 @@ lsof -i :9001
 ```
 :::
 
+::: tip HTTPS 不再默认 443
+HTTPS 服务默认监听 **9443**，刻意避让 443（避免与本机其他服务冲突）。要占用 443 须在 `server/.env` 显式设置 `HTTPS_PORT=443`。
+:::
+
 ::: warning 防火墙放行
-生产环境仅需开放 9001（或 HTTPS 443）。WebSocket 10001 与 Relay 10011 仅在内网/中继场景开放，**禁止暴露到公网**。详见 [生产部署 - 安全提示](./production#安全提示)。
+生产环境仅需开放 9001（或 HTTPS 9443）。WebSocket 10001 与 Relay 10011 仅在内网/中继场景开放，**禁止暴露到公网**。详见 [生产部署 - 安全提示](./production#安全提示)。
 :::
 
 ## 部署流程概览
@@ -84,7 +89,7 @@ lsof -i :9001
    ↓
 ② 克隆仓库        →  git clone + pnpm install
    ↓
-③ 配置环境变量    →  复制 .env.example → 编辑 .env（必填 JWT_SECRET）
+③ 配置环境变量    →  复制 .env.example → 编辑 .env（JWT 默认 RS256，密钥对自动生成）
    ↓
 ④ 首次配置向导    →  访问 /setup 完成班级初始化
    ↓

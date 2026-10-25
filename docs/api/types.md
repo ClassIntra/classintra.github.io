@@ -127,17 +127,6 @@ ClassIntra 使用 better-sqlite3 嵌入式数据库，所有表通过 `server/sr
 | `recalled` | `INTEGER DEFAULT 0` | 是否撤回 |
 | `created_at` | `TEXT DEFAULT (datetime('now'))` | 创建时间 |
 
-### conversations — AI 对话
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `id` | `TEXT PRIMARY KEY` | 对话 ID |
-| `user_id` | `TEXT NOT NULL` | 用户 ID |
-| `title` | `TEXT DEFAULT '新对话'` | 对话标题 |
-| `messages_json` | `TEXT DEFAULT '[]'` | 消息列表 JSON 数组 |
-| `created_at` | `TEXT DEFAULT (datetime('now'))` | 创建时间 |
-| `updated_at` | `TEXT DEFAULT (datetime('now'))` | 更新时间 |
-
 ### user_settings — 用户设置
 
 | 字段 | 类型 | 说明 |
@@ -195,24 +184,18 @@ ClassIntra 使用 better-sqlite3 嵌入式数据库，所有表通过 `server/sr
 | `mime_type` | `TEXT DEFAULT ''` | MIME 类型 |
 | `created_at` | `TEXT DEFAULT (datetime('now'))` | 创建时间 |
 
-### notes — 笔记
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `id` | `INTEGER PRIMARY KEY AUTOINCREMENT` | 自增主键 |
-| `owner_id` | `TEXT NOT NULL` | 所有者 ID |
-| `title` | `TEXT NOT NULL` | 标题 |
-| `content` | `TEXT DEFAULT ''` | 内容（Markdown） |
-| `visibility` | `TEXT DEFAULT 'private'` | 可见性：`private` / `shared` / `public` |
-| `updated_at` | `TEXT DEFAULT (datetime('now'))` | 更新时间 |
-
 ### app_control — 应用管控
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `app_name` | `TEXT PRIMARY KEY` | 应用名（kebab-case） |
 | `enabled` | `INTEGER DEFAULT 1` | 是否启用（0/1） |
+| `updated_by` | `TEXT DEFAULT ''` | 最近操作人用户 ID |
 | `updated_at` | `TEXT DEFAULT (datetime('now'))` | 更新时间 |
+
+::: tip 名单动态读取
+应用管控的应用名单不由本表硬编码：`GET /api/admin/app-control` 经 manifest-loader 扫描 `apps/*/manifest.json`（category=desktop）生成，「可否禁用」直接取 manifest 的 `canDisable` 字段，并合并市场已安装应用；本表只存覆盖状态（upsert，变更后经 WS 广播 `market_app_control_changed`）。名单读取异常时降级为全部启用。
+:::
 
 ### system_settings — 系统设置
 
@@ -315,30 +298,30 @@ ClassIntra 使用 better-sqlite3 嵌入式数据库，所有表通过 `server/sr
 
 ```json
 {
-  "name": "ai-chat",
-  "label": "AI 对话",
-  "icon": "AI-Chat.svg",
-  "color": "#7B68EE",
+  "name": "countdown",
+  "label": "倒数日",
+  "icon": "/resources/public/icons/Countdown.png",
+  "color": "#FF9500",
   "category": "desktop",
-  "order": 10,
+  "order": 11,
   "defaultEnabled": true,
   "canDisable": true,
   "type": "app",
-  "version": "1.2.0",
+  "version": "1.0.0",
   "frontend": {
-    "route": "/ai-chat",
-    "component": "AIChat.vue"
+    "route": "/countdown",
+    "component": "./frontend/Countdown.vue"
   },
   "backend": {
-    "mountPath": "/api/ai-chat",
-    "entry": "routes.js"
+    "mountPath": "/api/countdown",
+    "entry": "./backend/routes.js"
   }
 }
 ```
 
 ## WebSocket 消息格式
 
-ClassIntra WebSocket 连接地址为 `ws://host:port/ws?token=<jwt>`，所有消息为 JSON 文本，统一结构为 `{ type, ...payload }`。
+ClassIntra 聊天 WebSocket 连接地址为 `ws(s)://<host>:10001/?token=<JWT>`（`WS_PORT` 默认 `10001`，与 HTTP 端口分离），所有消息为 JSON 文本，统一结构为 `{ type, ...payload }`。
 
 ### 客户端 → 服务端
 
@@ -397,9 +380,13 @@ ClassIntra 服务端通过 `dotenv` 读取环境变量，主要变量如下：
 
 | 变量 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|------|--------|------|
-| `PORT` | `number` | 否 | `3000` | 后端监听端口 |
-| `JWT_SECRET` | `string` | 是 | — | JWT 签名密钥（未设置拒绝启动） |
-| `DB_PATH` | `string` | 否 | `data/classintra.db` | SQLite 数据库文件路径 |
+| `PORT` | `number` | 否 | `9001` | 后端 HTTP 监听端口（占用自动顺延） |
+| `WS_PORT` | `number` | 否 | `10001` | 聊天 WebSocket 监听端口 |
+| `JWT_PRIVATE_KEY` | `string` | 否 | — | RS256 私钥（PEM 文本或路径）；缺省用 `server/keys/jwt-private.pem`，不存在则首次启动自动生成 |
+| `JWT_PUBLIC_KEY` | `string` | 否 | — | RS256 公钥（PEM 文本或路径） |
+| `JWT_SECRET` | `string` | 否 | — | HS256 共享密钥，仅过渡期验签尚未刷新的旧 Token（兜底） |
+| `JWT_EXPIRES_IN` | `string` | 否 | `7d` | Token 有效期 |
+| `DB_PATH` | `string` | 否 | `./database/classintra.db` | SQLite 数据库文件路径（server 相对路径） |
 | `PUBLIC_DIR` | `string` | 否 | `public` | 静态资源目录 |
 | `CORS_ORIGIN` | `string` | 否 | `*` | CORS 白名单（逗号分隔） |
 | `CDN_WHITELIST` | `string` | 否 | — | CDN 代理域名白名单（逗号分隔） |
@@ -408,13 +395,10 @@ ClassIntra 服务端通过 `dotenv` 读取环境变量，主要变量如下：
 | `ADMIN_USER_IDS` | `string` | 否 | `[]` | 管理员用户 ID 列表（JSON 数组字符串） |
 | `RELAY_SECRET` | `string` | 否 | — | 中继服务器间认证密钥 |
 | `RELAY_SERVERS` | `string` | 否 | `[]` | 中继服务器地址列表（JSON 数组字符串） |
-| `WEATHER_API_KEY` | `string` | 否 | — | 和风天气 API Key |
-| `AI_API_KEY` | `string` | 否 | — | AI 对话服务 API Key（OpenAI 兼容） |
-| `AI_API_BASE` | `string` | 否 | — | AI 服务 Base URL |
-| `AI_MODEL` | `string` | 否 | `deepseek-chat` | AI 默认模型 |
+| `QWEATHER_KEY` | `string` | 否 | — | 和风天气 API Key |
 
-::: danger JWT_SECRET 必填
-`JWT_SECRET` 是唯一必填项，未设置时服务端启动会抛出错误并退出。生产环境请使用至少 32 字符的高强度随机字符串，建议通过 `openssl rand -hex 32` 生成。
+::: tip JWT 密钥与过渡期
+自 v1.4.0 起 Token 一律以 RS256 签发：私钥取 `JWT_PRIVATE_KEY`（PEM 文本或路径），未配置时默认使用 `server/keys/jwt-private.pem`（不存在则首次启动自动生成 RSA-2048 密钥对，公钥落 `server/keys/jwt-public.pem`）。私钥不出本机；外部服务需要验 Token 时把公钥文件交给对方即可。`JWT_SECRET` 不再是必填项，仅用于过渡期验签尚未刷新的旧 Token；私钥不可用且未配置 `JWT_SECRET` 时服务端拒绝签发。
 :::
 
 ::: tip 多机中继配置

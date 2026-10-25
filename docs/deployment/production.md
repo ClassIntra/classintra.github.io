@@ -95,8 +95,11 @@ cp server/.env.example server/.env
 PORT=9001
 WS_PORT=10001
 
-# JWT 配置（必须设置，否则服务无法启动）
-JWT_SECRET=<请替换为 ≥32 字符的随机串>
+# JWT 配置（v1.4 起签发走 RS256，无需必填项）
+# 私钥：JWT_PRIVATE_KEY 可选（PEM 文本或路径）；留空时首次启动自动生成
+# RSA-2048 密钥对到 server/keys/jwt-private.pem（公钥 jwt-public.pem 同目录）
+# JWT_PRIVATE_KEY=
+# JWT_SECRET=<可选，仅过渡期验旧 token 与兜底>
 JWT_EXPIRES_IN=7d
 
 # 班管 ID（格式 YYCC00，逗号分隔多班）
@@ -109,21 +112,6 @@ ADMIN_USER_IDS=250100
 QWEATHER_KEY=<your-qweather-key>
 QWEATHER_LOCATION=116.41,39.92
 QWEATHER_API_HOST=devapi.qweather.com
-
-# AI 聊天（OpenAI 兼容）
-AI_API_KEY=<your-ai-key>
-AI_API_URL=https://api.openai.com/v1/chat/completions
-AI_MODEL=gpt-3.5-turbo
-AI_AVAILABLE_MODELS=gpt-4o-mini-2024-07-18,gpt-4o-mini
-
-# DeepSeek AI（可选）
-DEEPSEEK_API_KEY=
-DEEPSEEK_API_URL=https://api.deepseek.com/chat/completions
-DEEPSEEK_MODEL=deepseek-chat
-
-# Tavily 联网搜索
-TAVILY_API_KEY=
-TAVILY_API_URL=https://api.tavily.com/search
 
 # 数据存储
 RESOURCES_DIR=../Resources
@@ -138,6 +126,9 @@ COHORT=25
 
 # HTTPS（生产建议 true，启用 secure cookie）
 HTTPS=false
+# HTTPS 服务端口（PM2 classintra-https 进程监听，默认 9443，不再默认 443；
+# 要占 443 须显式设 HTTPS_PORT=443）
+# HTTPS_PORT=9443
 
 # CORS（公网部署需配置允许的前端域名）
 CORS_ORIGINS=
@@ -155,11 +146,8 @@ TAILSCALE_RELAY_IP=
 VERBOSE_LOG=0
 ```
 
-::: warning JWT_SECRET 必须替换
-模板中 `JWT_SECRET=change-this-to-a-secure-random-string-at-least-32-chars` 是占位符，**未替换会导致服务无法启动**。生成随机密钥：
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+::: warning JWT 私钥不出本机
+RS256 私钥（`server/keys/jwt-private.pem`）仅用于本机签发 token，**绝不能外发或提交 Git**。其他服务（如 Cluss）需要验 CI token 时，把公钥 `server/keys/jwt-public.pem` 交给对方即可；`server/keys/` 属敏感目录，备份时加密保存。
 :::
 
 详细配置项说明见 [配置项参考](./configuration)。
@@ -242,6 +230,22 @@ pm2 save
 pm2 startup
 # 按 PM2 提示执行返回的 sudo 命令
 ```
+
+### PM2 进程清单
+
+`ecosystem.config.js` 共定义五个进程：
+
+| 进程 | 说明 |
+|------|------|
+| `classintra-server` | 主服务：HTTP 9001、WS 10001、Relay 10011 |
+| `classintra-https` | HTTPS 9443（`src/app-https.js`，`WS_MIRROR_MODE=true` 的 9001 镜像实例，不监听 WS/Relay） |
+| `tunnel-gateway` | 隧道网关 10111 |
+| `chmlfrp-frpc` | CHMLFRP 内网穿透 frpc 客户端 |
+| `pcagent` | noVNC 设备远程代理（Python） |
+
+::: tip
+`pm2 status` 应看到五个进程均为 `online`。HTTPS 端口如需更换，改 `server/.env` 的 `HTTPS_PORT` 后走「应用配置重启」（`pm2 restart ecosystem.config.js --update-env`）。
+:::
 
 ::: tip Windows 开机自启
 Windows 平台使用 [pm2-windows-startup](https://github.com/Unitech/pm2-windows-startup)：
@@ -327,9 +331,28 @@ server {
 
 ## HTTPS 配置
 
-校园公网部署强烈建议启用 HTTPS。两种方式任选其一：
+校园公网部署强烈建议启用 HTTPS。ClassIntra 内置 HTTPS 服务，由 PM2 进程 **classintra-https**（`server/src/app-https.js`）提供，**默认监听 9443**（不再默认 443，避免与本机其他服务冲突；要占 443 须在 `server/.env` 显式设置 `HTTPS_PORT=443`）。两种方式任选其一：
 
-### 方式一：Nginx 终止 HTTPS（推荐）
+### 方式一：内置 HTTPS（默认）
+
+`pm2 start ecosystem.config.js` 会一并拉起 classintra-https（与 classintra-server 同规格守护，开机自启）。该进程是 9001 主实例的 TLS 镜像（`WS_MIRROR_MODE=true`，WebSocket 与 Relay 仍由主实例监听）。
+
+内网可用自签证书：
+
+```powershell
+# Windows 自签证书
+cd server
+.\scripts\generate-certs.ps1
+.\start-https.ps1
+```
+
+::: warning 自签证书
+自签证书浏览器会告警，仅适合内网测试。生产环境请使用 Let's Encrypt 或学校 CA 颁发的证书。
+:::
+
+### 方式二：Nginx 终止 HTTPS
+
+让 Nginx 占用 443 对外、终止 TLS，反代到内置 HTTPS 的 9443（与方式一取其一；若选择此模式，也可让 Nginx 直接回源 9001 的 HTTP 实例）：
 
 申请证书后配置：
 
@@ -343,7 +366,15 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
 
-    # 其余 location 同上
+    # 反代到内置 HTTPS 实例（默认 9443）；也可回源 http://127.0.0.1:9001
+    location / {
+        proxy_pass https://127.0.0.1:9443;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 
 # HTTP 跳转 HTTPS
@@ -361,27 +392,12 @@ sudo apt-get install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d classintra.example.edu
 ```
 
-启用 HTTPS 后修改 `server/.env`：
+两种方式都需在 `server/.env` 启用 HTTPS（secure cookie）并限制跨域：
 
 ```bash
 HTTPS=true
 CORS_ORIGINS=https://classintra.example.edu
 ```
-
-### 方式二：Node.js 原生 HTTPS
-
-项目提供 `server/src/app-https.js` 与 `server/scripts/generate-certs.ps1`，适合内网无 Nginx 的场景：
-
-```powershell
-# Windows 自签证书
-cd server
-.\scripts\generate-certs.ps1
-.\start-https.ps1
-```
-
-::: warning 自签证书
-自签证书浏览器会告警，仅适合内网测试。生产环境请使用 Let's Encrypt 或学校 CA 颁发的证书。
-:::
 
 ## 验证部署
 
@@ -417,6 +433,7 @@ pm2 status
 # 5. 浏览器访问
 # 首次配置：http://<server-ip>:9001/setup
 # 桌面入口：http://<server-ip>:9001/
+# HTTPS 入口（classintra-https 进程）：https://<server-ip>:9443/
 ```
 
 ::: tip 健康检查端点
@@ -431,14 +448,14 @@ pm2 status
 部署到公网或共享内网前**务必**完成以下检查：
 
 **密钥与认证**
-- ✅ `JWT_SECRET` 已替换为 ≥32 字符随机串（非模板默认值）
+- ✅ JWT 密钥对就绪（默认自动生成于 `server/keys/`，或显式配置 `JWT_PRIVATE_KEY`）；私钥不出本机
 - ✅ `JWT_EXPIRES_IN` 不过长（建议 7d，长期使用可设 30d）
 - ✅ `DEV_PASSWORD` 已注释或移除（避免开发者后门）
-- ✅ `AI_API_KEY` / `QWEATHER_KEY` / `TAVILY_API_KEY` 等 API 密钥不外泄
+- ✅ `QWEATHER_KEY` 等 API 密钥不外泄
 - ✅ `RELAY_SECRET` 已设置（多机联动场景）
 
 **网络与防火墙**
-- ✅ 仅开放 9001（或 443）到公网
+- ✅ 仅开放 9001（或 HTTPS 9443）到公网
 - ✅ WebSocket 10001 与 Relay 10011 **仅内网可达**
 - ✅ 数据库目录 `server/database/` 不可外部访问
 - ✅ 启用 HTTPS（公网部署）
@@ -447,6 +464,7 @@ pm2 status
 **系统加固**
 - ✅ 创建非 root 用户运行 PM2
 - ✅ `server/.env` 文件权限设为 600（仅属主可读写）
+- ✅ `server/keys/` 目录（JWT 私钥）权限 600，不可提交 Git、备份加密
 - ✅ 定期备份数据库（见 [监控运维 - 备份恢复](./monitoring#备份与恢复)）
 - ✅ 监控磁盘空间，避免日志塞满
 :::

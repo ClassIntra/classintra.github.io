@@ -44,6 +44,10 @@ curl -i -c cookies.txt -X POST "$BASE_URL/api/auth/login" \
 
 服务端认证中间件会从 Cookie 或 `Authorization` 请求头提取 Token。脚本、移动端和跨域客户端建议显式使用 Bearer：
 
+::: tip RS256 签名
+自 v1.4.0 起，token 采用 RS256 非对称签名（服务端私钥签发、公钥验签，私钥不出本机）。旧的 HS256 token 在过渡期内仍可通过 `JWT_SECRET` 验证，平滑过渡不登出。详见 [认证概念](/concepts/auth)。
+:::
+
 ```bash
 TOKEN="TOKEN_FROM_LOGIN_RESPONSE"
 curl "$BASE_URL/api/auth/check-status" \
@@ -162,7 +166,7 @@ curl "$BASE_URL/api/system/heartbeat"
 curl "$BASE_URL/api/system/health"
 ```
 
-市场目录支持 `gitee`、`github`、`local`，默认使用 Gitee 并按服务端策略回退：
+市场目录支持 `gitee`、`github`、`local`，默认使用 Gitee 并按服务端策略回退。自 v1.3.0 起，`/api/market/catalog` 需要登录（`requireAuth`）；服务端代拉市场源时会自动附带 Bearer Token：
 
 ```bash
 curl "$BASE_URL/api/market/catalog?source=gitee" \
@@ -209,6 +213,8 @@ socket.addEventListener('message', function (event) {
 ```
 
 服务端会先返回 `connected`，聊天事件包括 `new_message`、`private_message`、`group_message` 等。客户端应处理 `error`、`pong`、连接关闭和重连；重连后重新发送 `connect`，不要假设旧连接仍有效。
+
+自 v1.4.0 起，第三方应用的实时事件也已并入同一条 WS 连接（WS 优先，不可用时以 HTTP 长轮询兜底），详见 [WebSocket 通信](/concepts/websocket)。
 
 ## 安全检查清单
 

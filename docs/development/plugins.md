@@ -24,6 +24,10 @@ description: ClassIntra 插件开发指南，覆盖 plugins 目录结构、manif
 且路径必须位于 `plugins/<name>/` 下）→ 原子写入运行时 `plugins/` 目录 → 后端路由热挂载 →
 在 `app_control` 表注册为默认启用。若热挂载失败，插件仍已落盘，重启后由 `route-aggregator` 自动重试。
 
+::: tip catalog 自 v1.3.0 起需要登录
+市场 catalog 读取接口（`GET /api/market/catalog`）为 requireAuth 接口。catalog 由**服务端代拉**并自动附带 Bearer Token，客户端无需额外处理。
+:::
+
 市场源 `index.json` 通过 `plugins` 段声明可安装插件，每个条目至少包含 `name` / `label` / `version` /
 `description` 与 `files`（相对仓库根的文件清单）：
 
@@ -47,6 +51,19 @@ description: ClassIntra 插件开发指南，覆盖 plugins 目录结构、manif
 ```
 
 > 插件市场的完整案例见 [AstrBot 机器人接入](./astrbot) 与 [网易云音乐插件](./netease-music)。
+
+## 插件生命周期：暂停与恢复
+
+插件支持**暂停 / 恢复**。管理员调用 `POST /api/market/plugin-toggle`（需登录 + 管理员权限，body `{ name, enabled }`）切换插件状态：
+
+- **暂停**（`enabled: false`）：插件后端路由停用，`/api/<插件名>/*` 请求按未挂载处理（返回 JSON 404）；
+- **恢复**（`enabled: true`）：后端路由重新挂载，插件恢复工作。
+
+状态变更成功后经 WS 广播 `plugin-paused` / `plugin-enabled`（`market_app_changed` 消息），前端据此联动刷新。没有独立的 pause / resume 端点——暂停与恢复是同一端点的两个方向。
+
+::: warning 不可暂停的插件
+manifest 声明 `canDisable: false` 的插件（联动基础插件）不允许暂停，切换时会直接报错。
+:::
 
 ## 插件与应用的区别
 
@@ -308,3 +325,4 @@ module.exports = router;
 - [第三方应用开发](./third-party) - 完整应用开发
 - [小组件开发](./widgets) - 桌面小组件
 - [WebSocket 通信](/concepts/websocket) - 实时消息机制
+- [web-proxy 插件](./web-proxy) - 内置插件示例：超能岛浏览器兼容模式

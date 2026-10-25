@@ -117,9 +117,8 @@ appName 存在 && to.meta.requiresAuth && token ?
 ROUTE_APP_MAP = {
   '/countdown': 'countdown',
   '/calendar': 'calendar',
-  '/notes': 'notes',
   '/resource': 'resource',
-  '/ai-chat': 'ai-chat',
+  '/profile/:userId': 'profile',
   '/chat': 'chat',
   '/community': 'community',
   '/timetable': 'timetable',
@@ -135,7 +134,7 @@ ROUTE_APP_MAP['/browser'] = 'browser';
 ```
 
 ::: tip 超能岛浏览器例外
-超能岛浏览器（`/browser` 路由）不通过应用管控，改为 per-user `browser_enabled` 字段控制。这是因为浏览器权限属于用户级隐私设置，而非应用级管控。`browser_enabled` 在管理后台 → 用户列表 → 编辑用户 → 超能岛浏览器 中配置。
+超能岛浏览器（`/browser` 路由）不通过应用管控，改为 per-user `browser_enabled` 字段控制。这是因为浏览器权限属于用户级隐私设置，而非应用级管控。`browser_enabled` 在管理后台 → 用户列表 → 编辑用户 → 超能岛浏览器 中配置；班管批量开关走专用接口 `GET /api/admin/ai-settings` / `POST /api/admin/ai-settings/batch-browser`（该组端点现即为此服务）。
 :::
 
 ### 应用管控缓存
@@ -154,10 +153,8 @@ function getEnabledApps() {
     enabledAppsLoading = null;
     return enabledAppsCache;
   }).catch(function() {
-    // 降级：全部启用（数据库异常时也不影响用户使用）
-    enabledAppsCache = ['chat', 'community', 'ai-chat', 'notes', 'resource',
-                       'weather', 'music', 'settings', 'timetable',
-                       'calendar', 'countdown', 'browser'];
+    // 降级：全部启用（名单动态来自本地 manifest 聚合，无硬编码兜底名单）
+    enabledAppsCache = loadManifests().map(function(m) { return m.name; });
     enabledAppsLoading = null;
     return enabledAppsCache;
   });
@@ -202,6 +199,24 @@ function clearAppControlCache() {
 
 ## 管理员远程管控
 
+### 管控名单的动态来源
+
+管理端管控名单**不再来自硬编码列表**，而是动态生成：
+
+```
+manifest-loader.loadManifests()
+    ↓ 过滤 _sourceType === 'app' && category === 'desktop'，按 order 排序
+    ↓ 「可否禁用」直接取 manifest.canDisable（false → protected，不允许禁用）
+DESKTOP_APPS（内置应用名单）
+    ↓
+marketService.listInstalled() 合并市场已安装应用
+    ↓
+GET /api/admin/app-control 返回完整名单 + 各应用启用状态
+```
+
+- 市场已装应用经 `listInstalled` 合并进名单，修复了此前 Cluss / 应用市场应用在管控里查不到的问题
+- 前端与 `/api/system/app-control` 读取异常时降级为「全部启用」（名单动态来自 manifest 聚合，无硬编码兜底应用名单，旧文档中的硬编码兜底列表已作废）
+
 ### 管控 API
 
 管理员通过以下 API 远程管控应用：
@@ -209,8 +224,8 @@ function clearAppControlCache() {
 | 方法 | 路径 | 权限 | 说明 |
 |------|------|------|------|
 | `GET` | `/api/system/app-control` | `requireAuth` | 获取启用应用列表（所有登录用户可调用） |
-| `GET` | `/api/admin/apps` | `requireAuth` + `requireAdmin` | 获取所有应用元数据（管理员可见） |
-| `POST` | `/api/admin/app-control` | `requireAuth` + `requireAdmin` + `requirePermission('manage_app_control')` | 启用/禁用应用 |
+| `GET` | `/api/admin/app-control` | `requireAuth` + `requirePermission('manage_app_control')` | 获取管控名单与各应用启用状态（名单动态生成） |
+| `PUT` | `/api/admin/app-control/:appName` | `requireAuth` + `requirePermission('manage_app_control')` | 启用/禁用应用 |
 
 ### 获取启用应用列表
 
@@ -237,8 +252,8 @@ router.get('/app-control', function(req, res) {
 
 ```javascript
 // server/src/routes/admin.js
-router.post('/app-control', auth.requirePermission('manage_app_control'), function(req, res) {
-  var appName = req.body.app_name;
+router.put('/app-control/:appName', auth.requirePermission('manage_app_control'), function(req, res) {
+  var appName = req.params.appName;
   var enabled = req.body.enabled ? 1 : 0;
   // UPSERT：存在则更新 enabled，不存在则插入
   db.prepare(
@@ -246,8 +261,10 @@ router.post('/app-control', auth.requirePermission('manage_app_control'), functi
     'ON CONFLICT(app_name) DO UPDATE SET enabled = excluded.enabled'
   ).run(appName, enabled);
   // 记录管理员操作日志
-  logAction(req.user.user_id, 'app_control', appName, 'enabled=' + enabled);
-  res.json({ code: 200, message: '应用管控已更新' });
+  logAction(req.user.user_id, enabled ? 'enable_app' : 'disable_app', appName, appName);
+  // WS 广播变更，在线用户实时感知
+  chatServer.broadcast({ type: 'market_app_control_changed', appName: appName, enabled: enabled === 1 });
+  res.json({ code: 200, message: enabled ? '应用已启用' : '应用已禁用' });
 });
 ```
 
@@ -355,7 +372,7 @@ function getDesktopApps() {
     ↓
 5. 分页渲染（每页 24 个图标，类 iOS 启动台）
     ↓
-6. Dock 栏：固定显示常用应用（如 chat / community / ai-chat）
+6. Dock 栏：固定显示常用应用（如 chat / community / settings）
 ```
 
 ### 桌面应用元数据
@@ -374,7 +391,7 @@ function getDesktopApps() {
 | `canDisable` | `manifest.canDisable` | 是否允许用户禁用（缺省 `true`） |
 
 ::: tip 分页与 Dock
-桌面应用分页显示，每页 24 个图标（6 列 × 4 行），底部有页码指示器。Dock 栏固定显示常用应用，不受分页影响。壁纸切换、锁屏密码、超能岛通知中心等桌面级功能由 `App.vue` 全局管理。
+桌面应用分页显示，每页 24 个图标（6 列 × 4 行），底部有页码指示器。Dock 栏固定显示常用应用，不受分页影响。壁纸切换、锁屏、超能岛通知中心等桌面级功能由 `App.vue` 全局管理。
 :::
 
 ### 应用图标组件

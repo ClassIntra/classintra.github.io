@@ -39,7 +39,6 @@ ClassIntra 是 pnpm monorepo，主要 workspace 如下：
 ```
 ClassIntra/
 ├── apps/                    # 应用（前端页面 + 可选后端 + 小组件）
-│   ├── ai-chat/             # AI 对话
 │   ├── admin/               # 管理后台
 │   ├── calendar/            # 日历
 │   ├── calculator/          # 计算器
@@ -48,7 +47,7 @@ ClassIntra/
 │   ├── countdown/           # 倒计时
 │   ├── integration/         # 集成管理后台
 │   ├── music/               # 音乐
-│   ├── notes/               # 笔记
+│   ├── profile/             # 个人主页
 │   ├── resource/            # 资源仓库 + 云盘
 │   ├── settings/            # 设置
 │   ├── timetable/           # 课表
@@ -81,7 +80,7 @@ ClassIntra/
 │   │   ├── middleware/      # 鉴权、限流
 │   │   ├── migrations/       # 数据库迁移
 │   │   ├── routes/          # API 路由（system、auth、user、admin 等）
-│   │   ├── services/        # AI、天气、Tavily、转码
+│   │   ├── services/        # 天气、转码、中继总线等
 │   │   ├── utils/           # JWT、DB、密码、Relay 等
 │   │   ├── ws/              # WebSocket 服务
 │   │   ├── app.js           # HTTP 入口
@@ -140,7 +139,7 @@ ClassIntra 采用简化版 Git Flow：
 |------|------|----------|
 | `main` | 稳定发布分支 | 固定 |
 | `dev` | 开发集成分支 | 固定 |
-| `feature/*` | 功能分支 | `feature/ai-streaming` |
+| `feature/*` | 功能分支 | `feature/message-recall` |
 | `fix/*` | 修复分支 | `fix/websocket-reconnect` |
 | `hotfix/*` | 紧急修复 | `hotfix/jwt-leak` |
 
@@ -181,7 +180,7 @@ ClassIntra 遵循 [Conventional Commits](https://www.conventionalcommits.org/) �
 
 | type | 说明 | 示例 |
 |------|------|------|
-| `feat` | 新功能 | `feat(ai-chat): 添加流式响应` |
+| `feat` | 新功能 | `feat(chat): 添加消息撤回` |
 | `fix` | 修复 | `fix(ws): 修复断线重连` |
 | `docs` | 文档 | `docs: 更新部署指南` |
 | `style` | 格式 | `style: 统一缩进` |

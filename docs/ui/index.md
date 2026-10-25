@@ -39,7 +39,7 @@ ClassIntra 内置一套类 iOS 风格的组件库，位于 `client/src/component
 
 | 组件 | 用途 |
 |------|------|
-| `IOSButton` | iOS 鷹摁按钮 |
+| `IOSButton` | iOS 按压反馈按钮 |
 | `IOSCard` | iOS 卡片容器 |
 | `IOSList` / `IOSListItem` | iOS 列表（带分组、图标、披露指示器） |
 | `IOSNavBar` | iOS 导航栏（标题 + 左右按钮） |

@@ -36,7 +36,7 @@ ClassIntra 的应用接入有**两条路线**，先明确你属于哪一条，�
 - 相应地，**破坏性后果由你负责**——踩坏宿主页面不会被运行时拦住。
 
 ::: tip 为什么不做沙箱
-`iframe` 沙箱会切断主题令牌继承、阻断 DOM 复用、并让「像系统原生应用一样」的观感无法实现。ClassIntra 选择信任开发者，用**契约 + 审查**替代**运行时隔离**（详见 [生态设计](/concepts/ecosystem)）。
+`iframe` 沙箱会切断主题令牌继承、阻断 DOM 复用、并让「像系统原生应用一样」的观感无法实现。ClassIntra 选择信任开发者，用**契约 + 审查**替代**运行时隔离**（详见 [外部系统集成](/development/integration)）。
 :::
 
 ---
@@ -103,7 +103,7 @@ pnpm create:app my-app --label "我的应用" --with-backend
 
 **禁止直接用 WebSocket**。腾讯 X5/TBS 的长连接不可靠，会静默断开。
 
-统一走 `context.data.realtime`（HTTP 长轮询封装）：
+统一走 `context.data.realtime`（内部复用核心 WS 连接，X5/TBS/不支持时自动降级为 HTTP 长轮询）：
 
 ```javascript
 var stop = context.data.realtime.subscribe('my-app.updated', function (payload) {
@@ -268,7 +268,7 @@ window.ClassIntraMarket.define({
 |---|---|---|
 | `context.appName` | 当前应用名 | — |
 | `context.app` | `onDestroy(fn)`、配置读写 | `app.config` `app.storage` |
-| `context.data` | `get` / `post`（HTTP）、`realtime`（长轮询）、`storage`（命名空间存储） | `data.*` |
+| `context.data` | `get` / `post`（HTTP）、`realtime`（WS 优先，长轮询兜底）、`storage`（命名空间存储） | `data.*` |
 | `context.ui` | `toast` / `modal` / `sheet`，返回原生 DOM 片段 | `ui.*` |
 | `context.system` | `notify` / `clipboard` / `share` / `navigate` | `system.*` |
 | `context.device` | `info` / `filePicker` / `camera` | `device.*` |
@@ -566,6 +566,10 @@ adjustments: []        # { date, as_day, weeks, note }
 https://raw.githubusercontent.com/ClassIntra/market/main/index.json
 https://raw.githubusercontent.com/ClassIntra/market/main/apps/my-app/manifest.json
 ```
+
+::: tip catalog 自 v1.3.0 起需要登录
+市场 catalog 读取接口（`GET /api/market/catalog`）为 requireAuth 接口。catalog 由**服务端代拉**并自动附带 Bearer Token，客户端无需额外处理。
+:::
 
 安装流程：
 

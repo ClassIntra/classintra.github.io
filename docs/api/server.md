@@ -1,12 +1,12 @@
 ---
 title: 服务端 API 参考
-description: ClassIntra 服务端 HTTP + WebSocket 接口完整参考：认证、用户、管理、初始化、资源、等级、CDN 代理、系统、集成 9 大路由模块的端点表与请求/响应示例、通用响应格式、错误码、限流策略。
+description: ClassIntra 服务端 HTTP + WebSocket 接口完整参考：认证、用户、管理、初始化、资源、等级、CDN 代理、系统、市场、集成等路由模块的端点表与请求/响应示例、通用响应格式、错误码、限流策略。
 outline: [2, 3]
 ---
 
 # 服务端 API 参考
 
-ClassIntra 服务端由 Express 4 实现，对外暴露 HTTP 接口，覆盖认证、用户、管理、初始化、资源、等级、CDN 代理、系统、集成 9 大模块。所有路由按文件拆分挂在 `/api/*` 前缀下，本页面是这些路由的完整参考手册。
+ClassIntra 服务端由 Express 4 实现，对外暴露 HTTP 接口，覆盖认证、用户、管理、初始化、资源、等级、CDN 代理、系统、市场、集成、全局实时等模块。所有路由按文件拆分挂在 `/api/*` 前缀下，本页面是这些路由的完整参考手册。
 
 ## 目录
 
@@ -21,8 +21,9 @@ ClassIntra 服务端由 Express 4 实现，对外暴露 HTTP 接口，覆盖认�
 - [等级 API（/api/level）](#等级-api-api-level)
 - [CDN 代理 API（/api/cdn）](#cdn-代理-api-api-cdn)
 - [系统 API（/api/system）](#系统-api-api-system)
+- [全局实时 API（/api/realtime）](#全局实时-api-api-realtime)
 - [集成 API（/api/integrations）](#集成-api-api-integrations)
-- [AI 聊天 API（/api/ai-chat）](#ai-聊天-api-api-ai-chat)
+- [市场 API（/api/market）](#市场-api-api-market)
 - [错误码列表](#错误码列表)
 - [限流策略](#限流策略)
 - [示例](#示例)
@@ -32,7 +33,7 @@ ClassIntra 服务端由 Express 4 实现，对外暴露 HTTP 接口，覆盖认�
 | 项目 | 值 |
 | --- | --- |
 | Base URL | `http://localhost:<port>` |
-| 默认端口 | `5001`（前端开发端口，后端默认 `3000`，可通过 `PORT` 覆盖） |
+| 默认端口 | `9001`（后端 HTTP，占用自动顺延；前端开发服务器默认 `5001`） |
 | 默认 Content-Type | `application/json`（除文件上传/下载、CDN 代理等明确说明外） |
 | CORS | 默认开启，允许 `Origin: *`；生产环境通过 `CORS_ORIGIN` 配置白名单 |
 | 允许方法 | `GET` / `POST` / `PUT` / `PATCH` / `DELETE` / `OPTIONS` |
@@ -41,8 +42,8 @@ ClassIntra 服务端由 Express 4 实现，对外暴露 HTTP 接口，覆盖认�
 | Cookie | `token`（httpOnly，`sameSite: 'lax'`，有效期 7 天） |
 
 ::: tip 端口与目录
-- 前端开发服务器默认端口 `5001`，后端 API 默认端口 `3000`，生产部署时通过 `server/.env` 配置。
-- 数据库文件路径由 `DB_PATH` 控制，默认 `server/data/classintra.db`（better-sqlite3 嵌入式数据库）。
+- 前端开发服务器默认端口 `5001`，后端 API 默认端口 `9001`（`PORT` 可覆盖，占用自动顺延），生产部署时通过 `server/.env` 配置。
+- 数据库文件路径由 `DB_PATH` 控制，默认 `./database/classintra.db`（server 相对路径，better-sqlite3 嵌入式数据库）。
 - 静态资源目录由 `PUBLIC_DIR` 控制，默认 `server/public`。
 :::
 
@@ -53,15 +54,15 @@ ClassIntra 服务端由 Express 4 实现，对外暴露 HTTP 接口，覆盖认�
 - **JWT Token**：登录/注册成功后返回 `token`，后续请求通过 `Authorization: Bearer <token>` 携带，同时也会写入 `token` Cookie（httpOnly）。
 - **Cookie**：登录后服务端会设置 `token` Cookie，浏览器自动携带，配合 `withCredentials: true` 使用。
 
-Token 由 `jsonwebtoken` 签发，包含 `user_id`、`net_name`、`real_name`、`is_admin`、`is_class_admin`、`role`、`officer_permissions`、`officer_title`、`gender` 等字段，有效期 7 天，通过 `jwtUtil.verifyToken` 校验。
+Token 由 `jsonwebtoken` 以 **RS256** 签发，包含 `user_id`、`net_name`、`real_name`、`is_admin`、`is_class_admin`、`role`、`officer_permissions`、`officer_title`、`gender` 等字段，有效期 7 天，通过 `jwtUtil.verifyToken` 校验（先按非对称算法白名单 RS256/RS384/RS512/ES256/ES384/ES512 验签，显式声明算法以防降级攻击；失败再退回 HS256 共享密钥，兼容过渡期的旧 Token）。
 
-::: warning JWT_SECRET 必填
-`server/.env` 中的 `JWT_SECRET` 为必填项，未设置时服务端拒绝启动。生产环境请使用高强度随机字符串（至少 32 字符）。
+::: tip RS256 密钥管理
+签名私钥只留在服务端本机：优先读取 `JWT_PRIVATE_KEY` 环境变量（PEM 文本或路径），未配置时默认使用 `server/keys/jwt-private.pem`（不存在则首次启动自动生成 RSA-2048 密钥对，公钥落 `server/keys/jwt-public.pem`）。私钥不出本机；外部服务需要验 Token 时，把 `server/keys/jwt-public.pem` 交给对方即可。`JWT_SECRET` 仅在过渡期用于验签尚未刷新的旧 Token，不再是必填项；私钥不可用且未配置 `JWT_SECRET` 时服务端拒绝签发。
 :::
 
 ### 中继登录（跨班级）
 
-ClassIntra 支持多班级中继登录：当本机数据库未找到用户时，会依次向 `config.relay.servers` 中的中继服务器发起 `POST /api/auth/relay-verify` 请求，使用 `X-Relay-Secret` 头进行服务间认证。中继服务器返回用户信息后，本机会落库并签发本机 Token。
+ClassIntra 支持多班级中继登录：当本机数据库未找到用户时，会依次向 `config.relay.servers` 中的中继服务器发起 `POST /api/auth/relay-verify` 请求。该端点为服务间内部端点，鉴权头 `X-Relay-Secret` 必须与对端配置的 `RELAY_SECRET` 一致（`RELAY_SECRET` 同时用于跨班 Relay 消息同步与 Cluss 联动桥鉴权）。中继服务器校验账号密码并返回用户信息后，本机会落库并签发本机 Token。
 
 ::: tip Tailscale 组网
 多班级中继登录通常配合 Tailscale 组网使用，详见部署文档中的"多机中继"章节。
@@ -412,7 +413,7 @@ CDN 代理仅允许白名单域名（默认包含常见 CDN 如 `cdn.jsdelivr.ne
 | GET | `/api/system/version` | 获取系统版本信息 | 否 |
 | GET | `/api/system/heartbeat` | 心跳检测（前端定时调用） | 否 |
 | GET | `/api/system/health` | 健康检查（数据库、内存、运行时长） | 否 |
-| PUT | `/api/system/app-control` | 应用管控（启用/禁用桌面应用） | 管理员 |
+| GET | `/api/system/app-control` | 获取启用的应用名列表（含锁屏开关，客户端据此过滤禁用应用） | 是 |
 
 **GET /api/system/heartbeat 响应**：
 
@@ -427,11 +428,12 @@ CDN 代理仅允许白名单域名（默认包含常见 CDN 如 `cdn.jsdelivr.ne
 }
 ```
 
-**PUT /api/system/app-control 请求体**：
+应用管控的启停在管理端完成：`GET /api/admin/app-control` 列出全部应用及启用状态（名单由 manifest-loader 动态扫描 `apps/*/manifest.json` 生成，并合并市场已安装应用），`PUT /api/admin/app-control/:appName` 更新启用状态（权限 `manage_app_control`；读取异常时降级为全部启用，变更后经 WS 广播 `market_app_control_changed`）。
+
+**PUT /api/admin/app-control/:appName 请求体**：
 
 ```json
 {
-  "app_name": "ai-chat",
   "enabled": false
 }
 ```
@@ -442,7 +444,7 @@ CDN 代理仅允许白名单域名（默认包含常见 CDN 如 `cdn.jsdelivr.ne
 
 源码：`server/src/routes/realtime.js`、`server/src/utils/realtime-bus.js`
 
-该通道面向第三方市场应用和插件，使用 JWT 鉴权的 HTTP 长轮询，不依赖 Chat 应用或 WebSocket。
+该通道面向第三方市场应用和插件，使用 JWT 鉴权，不依赖 Chat 应用。前端经 `context.realtime` 消费时**复用核心 WS 连接**（WebSocket 优先，X5/TBS/不支持时自动降级为 HTTP 长轮询）；下列 HTTP 端点保留给长轮询消费方与无 WS 环境。
 
 | 方法 | 路径 | 说明 | 认证 |
 | --- | --- | --- | --- |
@@ -513,120 +515,21 @@ stop();
 `POST /api/integrations/webhook` 通过 `X-Webhook-Token` 头部携带集成 Token 进行认证。Webhook 接收方会校验 Token 有效性、Origin 白名单、scopes 权限，并通过 `webhookReceiver` 派发到对应的处理器。
 :::
 
-## AI 聊天 API（/api/ai-chat）
+## 市场 API（/api/market）
 
-源码：`apps/ai-chat/backend/routes.js`（manifest 声明挂载，全局限流 30 次/分钟）
-
-AI 聊天采用**模型注册表**（`ai_models` 表）驱动，支持接入任意 OpenAI 兼容模型。模型接入、启停与默认模型管理见 [配置项 → AI 配置](/deployment/configuration#ai-配置)。
-
-### 模型
+源码：`server/src/routes/market.js`
 
 | 方法 | 路径 | 说明 | 认证 |
 | --- | --- | --- | --- |
-| GET | `/api/ai-chat/models` | 当前用户可见的模型列表（不含密钥） | 是 |
-| GET | `/api/ai-chat/admin/models` | 全量模型列表（Key 掩码） | 系统管理员 |
-| POST | `/api/ai-chat/admin/models` | 接入新模型 | 系统管理员 |
-| PUT | `/api/ai-chat/admin/models/:id` | 编辑模型（Key 留空不覆盖） | 系统管理员 |
-| DELETE | `/api/ai-chat/admin/models/:id` | 删除模型 | 系统管理员 |
-| PUT | `/api/ai-chat/admin/models/:id/toggle` | 启用 / 停用（停用默认模型时自动迁移默认标记） | 系统管理员 |
-| PUT | `/api/ai-chat/admin/models/default` | 设置全局默认模型 | 系统管理员 |
-| POST | `/api/ai-chat/admin/models/test` | 测试连接（支持未保存的配置，15s 超时） | 系统管理员 |
+| GET | `/api/market/catalog` | 市场目录（服务端代理拉取，`?source=` 指定市场源） | 是（自 v1.3.0 起需登录） |
+| GET | `/api/market/asset` | 目录静态资源代理（应用图标等） | 否 |
+| POST | `/api/market/install` | 安装应用 | 管理员 |
+| POST | `/api/market/uninstall` | 卸载应用 | 管理员 |
+| POST | `/api/market/plugin-toggle` | 启用 / 暂停插件 | 管理员 |
 
-**GET /api/ai-chat/models 响应**：
-
-```json
-{
-  "code": 200,
-  "data": {
-    "models": [
-      {
-        "id": "glm-4-flash",
-        "label": "智谱 GLM-4-Flash",
-        "color": "#6366f1",
-        "is_free": true,
-        "supports_thinking": true,
-        "supports_search": false,
-        "is_default": false
-      }
-    ],
-    "default_model": "default",
-    "user_model": "glm-4-flash",
-    "can_manage": false
-  }
-}
-```
-
-### 模型管理（AI 模型 tab，管理页内）
-
-模型管理 UI位于 **管控中心 → AI 模型** tab（系统管理员与班管可见）。支持：
-
-- **接入数量与来源不限**：每个模型独立 API 地址与密钥；API 地址填到 `/v1` 即自动补全 `/chat/completions`
-- **单源多模型 / 批量接入**：同一源接多个模型时自动提示复用已有密钥；开启「批量模式」后每行填一个模型标识（支持 `显示名 | 模型标识` 格式），一次提交全部接入；模型卡片上的「复制接入」按钮可复制任意模型的源配置
-- **厂商模板**：智谱 GLM / DeepSeek / Kimi / Qwen / 硅基流动 / OpenAI 一键填充
-- **模型级参数**：上下文预算（`max_context_tokens`，0 = 全局默认 10000）、单次输出上限（`max_output_tokens`）、思考强度（`reasoning_effort`，low / medium / high）
-- 启停（控制用户可见性）、设默认、连接测试（15s 超时）、删除
-
-### 使用策略（ai_policies）
-
-策略 = 预设的模型授权方案（如「仅免费」「考试模式」）。**在 AI 模型 tab 底部的「使用策略」区块定义**（新建 / 编辑 / 设默认 / 删除），**在「用户管理」tab 多选用户后用工具栏「AI 策略」按钮一键应用**。
-
-| 方法 | 路径 | 说明 | 认证 |
-| --- | --- | --- | --- |
-| GET | `/api/ai-chat/admin/policies` | 策略列表（含默认策略标记） | 系统管理员/班管 |
-| POST | `/api/ai-chat/admin/policies` | 创建策略（`model_ids` 空数组 = 不限制） | 系统管理员/班管 |
-| PUT | `/api/ai-chat/admin/policies/:id` | 编辑策略 | 系统管理员/班管 |
-| DELETE | `/api/ai-chat/admin/policies/:id` | 删除策略（默认策略不可删；引用用户自动回落默认策略） | 系统管理员/班管 |
-| POST | `/api/ai-chat/admin/apply-policy` | 多选用户批量应用策略（`user_ids` + `policy_id`，空 `policy_id` = 解除限制） | 系统管理员/班管 |
-| POST | `/api/ai-chat/admin/models/batch` | 单源批量接入（`models` 数组最多 50 个，支持 `reuse_key_from`） | 系统管理员/班管 |
-
-策略解析规则：用户生效策略的允许集合之外视为不可用；请求模型、个人偏好、全局默认均被排除时，取策略内第一个可用模型；故障回落同样受策略约束。
-
-### 聊天
-
-| 方法 | 路径 | 说明 | 认证 |
-| --- | --- | --- | --- |
-| POST | `/api/ai-chat/chat` | 同步对话（JSON 响应） | 是 |
-| POST | `/api/ai-chat/chat/stream` | 流式对话（SSE） | 是 |
-
-**POST /api/ai-chat/chat 请求体**：
-
-```json
-{
-  "conversation_id": "uuid",
-  "message": "你好",
-  "model": "glm-4-flash",
-  "thinking": true,
-  "system_prompt": "可选，全局自定义提示词"
-}
-```
-
-模型解析优先级：请求体 `model` > 用户保存的偏好 > 全局默认模型 > 首个可用模型。主模型请求失败时自动回落到默认模型，响应带 `fallback: true` 与实际使用的 `model` / `model_label` 字段。`thinking` 仅在所选模型声明了「深度思考」能力时生效。
-
-**SSE 事件**（`text/event-stream`，逐行 `data: {...}`）：
-
-| 事件 | 说明 |
-| --- | --- |
-| `{"content": "..."}` | 增量内容（`action: "replace"` 表示整段替换，用于搜索后重放） |
-| `{"reasoning": "..."}` | 思考过程增量（思考模式） |
-| `{"searching": true, "query": "..."}` | 联网搜索开始 / 结束 |
-| `{"fallback": true, "model": "...", "model_label": "..."}` | 主模型失败，已切换备用模型 |
-| `{"usage": {...}}` | Token 用量与缓存命中 |
-| `{"error": "..."}` / `{"done": true}` | 错误 / 正常收尾 |
-
-### 对话管理与设置
-
-| 方法 | 路径 | 说明 | 认证 |
-| --- | --- | --- | --- |
-| GET / POST | `/api/ai-chat/conversations` | 对话列表 / 新建 | 是 |
-| GET / PATCH / DELETE | `/api/ai-chat/conversations/:id` | 对话详情 / 改标题与人设 / 删除 | 是 |
-| PUT | `/api/ai-chat/conversations/:id/messages` | 整体覆盖消息（多选编辑后同步） | 是 |
-| GET / PUT | `/api/ai-chat/settings` | 用户偏好（`system_prompt`、`pinned_conversations`、`model`） | 是 |
-
-::: warning 管理端点权限
-`/api/ai-chat/admin/*` 要求 `is_admin = 1`：系统管理员与**班管**（服务端登录时动态提升）有权限，班干（officer 角色）无权访问 —— 模型配置包含上游 API 密钥。`GET /models` 响应中的 `can_manage` 字段为服务端权威判定，前端管理入口以此展示。
-
-管控中心用户管理页的「AI 策略」批量应用走同一权限体系；旧 DeepSeek 单独开关（`/admin/ai-settings/*` 的 deepseek 端点）已废弃移除。
-:::
+- **`GET /api/market/asset?source=<sourceId>&path=<相对路径>`**：目录里的相对路径图标会被改写成该地址，由服务端代理拉取（路径校验 + 扩展名白名单 + 大小上限；SVG 响应附加禁止内联脚本的 CSP）。本地已安装应用的图标走 `/market-static/<name>/...`。
+- **`POST /api/market/plugin-toggle`** 请求体 `{ "name": "<插件名>", "enabled": true|false }`：暂停后插件后端接口即时下线（请求期闸门，无需重启服务），成功后经核心 WS 广播 `plugin-paused` / `plugin-enabled` 事件。
+- 应用安装 / 卸载成功后同样经 WS 广播 `market_app_changed`（action 为 `installed` / `uninstalled` 等）。市场还提供市场源列表、插件与主题的安装管理端点（`/sources`、`/installed`、`/plugins-installed`、`/themes-installed` 等），此处不逐一列出。
 
 ## 错误码列表
 
@@ -672,7 +575,7 @@ ClassIntra 通过 `server/src/middleware/rate-limit.js` 实现基于内存的令
 ### 注册新用户
 
 ```bash
-curl -X POST http://localhost:5001/api/auth/register \
+curl -X POST http://localhost:9001/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "net_name": "小明同学",
@@ -685,7 +588,7 @@ curl -X POST http://localhost:5001/api/auth/register \
 ### 登录并保存 Token
 
 ```bash
-curl -X POST http://localhost:5001/api/auth/login \
+curl -X POST http://localhost:9001/api/auth/login \
   -H "Content-Type: application/json" \
   -c cookies.txt \
   -d '{"account":"张三","password":"StrongPass123!"}'
@@ -694,7 +597,7 @@ curl -X POST http://localhost:5001/api/auth/login \
 ### 刷新 Token
 
 ```bash
-curl -X POST http://localhost:5001/api/auth/refresh-token \
+curl -X POST http://localhost:9001/api/auth/refresh-token \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   -b cookies.txt
 ```
@@ -702,7 +605,7 @@ curl -X POST http://localhost:5001/api/auth/refresh-token \
 ### 更新用户资料
 
 ```bash
-curl -X PATCH http://localhost:5001/api/user/profile \
+curl -X PATCH http://localhost:9001/api/user/profile \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"net_name": "新网名", "info": {"signature": "好好学习"}}'
@@ -711,7 +614,7 @@ curl -X PATCH http://localhost:5001/api/user/profile \
 ### 修改密码
 
 ```bash
-curl -X PUT http://localhost:5001/api/user/change-password \
+curl -X PUT http://localhost:9001/api/user/change-password \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"old_password":"old","new_password":"new","confirm_password":"new"}'
@@ -720,7 +623,7 @@ curl -X PUT http://localhost:5001/api/user/change-password \
 ### 管理员禁用用户
 
 ```bash
-curl -X PATCH http://localhost:5001/api/admin/users/2024001/status \
+curl -X PATCH http://localhost:9001/api/admin/users/2024001/status \
   -H "Authorization: Bearer <admin_token>" \
   -H "Content-Type: application/json" \
   -d '{"status":"disabled","ban_reason":"违规操作","ban_expires_at":"2026-09-01 12:00:00"}'
@@ -729,7 +632,7 @@ curl -X PATCH http://localhost:5001/api/admin/users/2024001/status \
 ### 发布广播通知
 
 ```bash
-curl -X POST http://localhost:5001/api/admin/broadcasts \
+curl -X POST http://localhost:9001/api/admin/broadcasts \
   -H "Authorization: Bearer <admin_token>" \
   -H "Content-Type: application/json" \
   -d '{"content":"今天下午 3 点开班会","priority":"high"}'
@@ -738,7 +641,7 @@ curl -X POST http://localhost:5001/api/admin/broadcasts \
 ### 委任班干
 
 ```bash
-curl -X POST http://localhost:5001/api/admin/officers \
+curl -X POST http://localhost:9001/api/admin/officers \
   -H "Authorization: Bearer <admin_token>" \
   -H "Content-Type: application/json" \
   -d '{"user_id":"2024001","title":"班长","permissions":["manage_posts","manage_users"]}'
@@ -747,20 +650,20 @@ curl -X POST http://localhost:5001/api/admin/officers \
 ### 签到获取经验
 
 ```bash
-curl -X POST http://localhost:5001/api/level/daily-login \
+curl -X POST http://localhost:9001/api/level/daily-login \
   -H "Authorization: Bearer <token>"
 ```
 
 ### CDN 代理获取资源
 
 ```bash
-curl "http://localhost:5001/api/cdn/proxy?url=https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.min.js"
+curl "http://localhost:9001/api/cdn/proxy?url=https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.min.js"
 ```
 
 ### 签发集成 Token
 
 ```bash
-curl -X POST http://localhost:5001/api/integrations/tokens \
+curl -X POST http://localhost:9001/api/integrations/tokens \
   -H "Authorization: Bearer <admin_token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -774,7 +677,7 @@ curl -X POST http://localhost:5001/api/integrations/tokens \
 ### 接收 Webhook
 
 ```bash
-curl -X POST http://localhost:5001/api/integrations/webhook \
+curl -X POST http://localhost:9001/api/integrations/webhook \
   -H "X-Webhook-Token: ci_xxxxxxxxxxxxxxxx" \
   -H "Content-Type: application/json" \
   -d '{"event":"display.update","data":{"screen":"main"}}'
@@ -783,16 +686,16 @@ curl -X POST http://localhost:5001/api/integrations/webhook \
 ### 系统健康检查
 
 ```bash
-curl http://localhost:5001/api/system/health
+curl http://localhost:9001/api/system/health
 ```
 
 ### 应用管控
 
 ```bash
-curl -X PUT http://localhost:5001/api/system/app-control \
+curl -X PUT http://localhost:9001/api/admin/app-control/music \
   -H "Authorization: Bearer <admin_token>" \
   -H "Content-Type: application/json" \
-  -d '{"app_name":"ai-chat","enabled":false}'
+  -d '{"enabled":false}'
 ```
 
 ## 相关文档

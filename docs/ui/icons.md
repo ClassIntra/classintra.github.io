@@ -136,13 +136,13 @@ export default {
 
 ```json
 {
-  "name": "ai-chat",
-  "label": "AI 对话",
-  "icon": "AI-Chat.svg"
+  "name": "countdown",
+  "label": "倒数日",
+  "icon": "/resources/public/icons/Countdown.png"
 }
 ```
 
-`icon-resolver` 会自动从 `Resources/public/icons/` 查找 `AI-Chat.svg`，未找到时回退到 Font Awesome 或 URL 解析。
+`icon-resolver` 会自动从 `Resources/public/icons/` 查找 `Countdown.png`，未找到时回退到 Font Awesome 或 URL 解析。
 
 ::: warning SVG 颜色继承
 通过 `<img>` 加载的 SVG **不会**继承父元素的 `color`，因此无法通过 CSS 变量动态着色。如需主题感知的矢量图标，建议：
@@ -213,7 +213,6 @@ ClassIntra 的图标资源按类别组织在 `Resources/public/icons/` 下：
 
 | 图标文件 | 对应应用 |
 |---------|---------|
-| `AI-Chat.svg` / `AI-Chat.png` | AI 对话 |
 | `Calculator.svg` | 计算器 |
 | `Calendar.svg` / `Calendar.png` | 日历 |
 | `Chat.svg` / `Chat.png` | 聊天 |
@@ -221,11 +220,12 @@ ClassIntra 的图标资源按类别组织在 `Resources/public/icons/` 下：
 | `Control.svg` | 控制中心 |
 | `Countdown.svg` / `Countdown.png` | 倒计时 |
 | `Files.svg` / `Files.png` | 云盘 |
+| `Market.svg` / `Market.png` | 应用市场 |
 | `Music.svg` / `Music.png` | 音乐播放器 |
-| `Note.svg` / `Note.png` | 笔记 |
-| `Settings.svg` / `Settings.png` | 设置 |
+| `Settings.svg` / `Settings.png` | 设置（个人主页复用该图标） |
 | `Timetable.svg` / `Timetable.png` | 课程表 |
 | `ToolBox.svg` / `ToolBox.png` | 工具箱 |
+| `Weather.svg` / `Weather.png` | 天气 |
 
 ::: tip PNG 与 SVG 双版本
 部分图标同时提供 SVG 与 PNG 版本：SVG 用于现代浏览器（矢量、可缩放），PNG 用于 Chrome 80 等老旧浏览器（SVG 渲染兼容性问题）。`icon-resolver` 会根据浏览器能力自动选择。
@@ -281,10 +281,9 @@ var levelIcon = resolveIcon('level/Lv' + user.level + '.svg');
 | 应用 | 图标文件 | Font Awesome 替代 |
 |------|---------|------------------|
 | 聊天 | `Chat.svg` | `fa-solid fa-comment` |
-| AI 对话 | `AI-Chat.svg` | `fa-solid fa-robot` |
+| 个人主页 | `Settings.png`（复用设置图标） | `fa-solid fa-user` |
 | 社区论坛 | `Community.svg` | `fa-solid fa-users` |
 | 云盘 | `Files.svg` | `fa-solid fa-folder` |
-| 笔记 | `Note.svg` | `fa-solid fa-sticky-note` |
 | 音乐 | `Music.svg` | `fa-solid fa-music` |
 | 天气 | `Weather.svg` | `fa-solid fa-cloud-sun` |
 | 计算器 | `Calculator.svg` | `fa-solid fa-calculator` |

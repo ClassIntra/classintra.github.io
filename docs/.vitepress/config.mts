@@ -72,6 +72,8 @@ export default defineConfig({
           { text: '联机五子棋开发', link: '/development/gomoku-online' },
           { text: '网易云音乐插件', link: '/development/netease-music' },
           { text: 'AstrBot 机器人接入', link: '/development/astrbot' },
+          { text: '超能岛浏览器兼容模式（web-proxy）', link: '/development/web-proxy' },
+          { text: 'Cluss 集成', link: '/development/cluss-integration' },
           { text: '外部系统集成', link: '/development/integration' },
           { text: 'Chrome 80 兼容', link: '/development/chrome-80-compat' },
         ]
@@ -139,6 +141,8 @@ export default defineConfig({
           { text: '联机五子棋开发', link: '/development/gomoku-online' },
           { text: '网易云音乐插件', link: '/development/netease-music' },
           { text: 'AstrBot 机器人接入', link: '/development/astrbot' },
+          { text: '超能岛浏览器兼容模式（web-proxy）', link: '/development/web-proxy' },
+          { text: 'Cluss 集成', link: '/development/cluss-integration' },
           { text: '外部系统集成', link: '/development/integration' },
           { text: 'Chrome 80 兼容', link: '/development/chrome-80-compat' },
         ]
@@ -201,7 +205,7 @@ export default defineConfig({
     ],
 
     footer: {
-      message: '基于 <a href="https://github.com/ClassIntra/ClassIntra/blob/main/LICENSE">MIT 协议</a> 开源 · <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&amp;k=y_6ndZUGpNu6dTuvpI4U3NQDs5FtIzIx&amp;authKey=Tbq7hC6Ppe2r2WPKpvqLw1xnzjET5sfWBE45XjSvKOSJagX2WkkTx1Pat2EbqshZ&amp;noverify=0&amp;group_code=1074276021" target="_blank" rel="noreferrer">加入 QQ 群【ClassIntra】</a>',
+      message: '基于 <a href="https://github.com/ClassIntra/ClassIntra/blob/main/LICENSE">MIT 协议</a> 开源 · <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&amp;k=y_6ndZUGpNu6dTuvpI4U3NQDs5FtIzIx&amp;authKey=Tbq7hC6Ppe2r2WPKpvqLw1xnzjET5sfWBE45XjSvKOSJagX2WkkTx1Pat2EbqshZ&amp;noverify=0&amp;group_code=1074276021" target="_blank" rel="noreferrer">加入 QQ 群【ClassIntra】</a><br><span style="opacity:.8;font-size:12px">本项目 LOGO 来源于公共素材库，仅用于非商业教育目的，权利归其各自所有者；与其他项目 LOGO 的相似纯属巧合。<br>The logo is sourced from a public domain asset library and is used for non-commercial, educational purposes only.</span>',
       copyright: 'Copyright © 2026 <a href="https://github.com/ClassIntra">ClassIntra</a>'
     },
 

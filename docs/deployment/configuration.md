@@ -1,6 +1,6 @@
 ---
 title: 配置项参考
-description: ClassIntra 全部环境变量参考，按基础配置、认证、AI、天气、搜索、数据存储、中继、同步、VPN、日志分类，包含变量名、类型、默认值与说明。
+description: ClassIntra 全部环境变量参考，按基础配置、认证、天气、数据存储、中继、插件与集成、同步、VPN、日志分类，包含变量名、类型、默认值与说明。
 ---
 
 # 配置项参考
@@ -18,6 +18,7 @@ ClassIntra 通过 `server/.env` 文件配置全部运行参数。本页面列出
 | `PORT` | number | `9001` | HTTP 服务端口，提供 REST API 与静态前端 |
 | `WS_PORT` | number | `10001` | WebSocket 服务端口，用于实时通讯 |
 | `HTTPS` | boolean | `false` | 是否启用 HTTPS 模式（影响 cookie secure 标记） |
+| `HTTPS_PORT` | number | `9443` | HTTPS 服务端口，由 PM2 进程 `classintra-https`（`src/app-https.js`，`WS_MIRROR_MODE=true` 的 9001 镜像实例）监听。**不再默认 443**，要占 443 须显式设 `HTTPS_PORT=443` |
 | `CORS_ORIGINS` | string | （空） | 允许跨域的前端域名，逗号分隔。生产环境建议显式指定 |
 
 ::: warning HTTPS 与 CORS
@@ -28,9 +29,13 @@ ClassIntra 通过 `server/.env` 文件配置全部运行参数。本页面列出
 
 ## 认证配置
 
+v1.4 起 JWT 一律 **RS256** 签发：私钥来源优先取 `JWT_PRIVATE_KEY`（PEM 文本或路径），留空则使用默认位置 `server/keys/jwt-private.pem`，首次启动自动生成 RSA-2048 密钥对（公钥 `jwt-public.pem` 落同目录）。**私钥不出本机**；其他服务（如 Cluss）需要验 CI token 时，把 `server/keys/jwt-public.pem` 交给对方即可。
+
 | 变量 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `JWT_SECRET` | string | **必填** | JWT 签名密钥，≥32 字符随机串，未设置则服务拒绝启动 |
+| `JWT_PRIVATE_KEY` | string | （空） | RS256 签发私钥，PEM 文本或文件路径。留空时用 `server/keys/jwt-private.pem`（不存在则首次启动自动生成 RSA-2048 密钥对） |
+| `JWT_PUBLIC_KEY` | string | （空） | RS256 公钥（可选），供其他服务验签；一般直接分发 `server/keys/jwt-public.pem` 文件 |
+| `JWT_SECRET` | string | （空） | HS256 共享密钥，仅**过渡期验旧 token 与兜底**；私钥不可用且此值为空时拒绝签发 token |
 | `JWT_EXPIRES_IN` | string | `7d` | JWT 过期时间，支持 `1h` / `7d` / `30d` 等 |
 | `ADMIN_USER_IDS` | string | （空） | 班管 ID 列表，格式 `YYCC00`，逗号分隔，如 `250100,250200` |
 | `DEV_PASSWORD` | string | （空） | 开发者测试账号密码，设置后创建 ID=`999999` 的开发者账号。**生产环境必须留空** |
@@ -44,44 +49,10 @@ ClassIntra 通过 `server/.env` 文件配置全部运行参数。本页面列出
 班管不预创建账号，真实用户通过预注册名单注册后，系统匹配 `ADMIN_USER_IDS` 自动授予管理员权限。
 :::
 
-::: warning JWT_SECRET 安全
-- 不可使用模板默认值 `change-this-to-a-secure-random-string-at-least-32-chars`
-- 生成随机密钥：`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
-- 密钥泄露后所有 JWT 失效，需重新签发
-- 生产环境建议每 90 天轮换
-:::
-
-## AI 配置
-
-v1.3 起，AI 聊天采用**模型注册表**（`ai_models` 表）驱动，支持接入任意 OpenAI 兼容 API：GLM、Qwen、Kimi、DeepSeek、自建网关、第三方中转站均可，**接入数量与来源不限**。模型的新增、编辑、启停（控制用户可见性）、设默认、连接测试全部在 **AI 应用内「模型管理」面板**完成（系统管理员与班管可见；新建时可从厂商模板一键填充）。
-
-### 配置分层
-
-| 层 | 入口 | 管什么 |
-|------|------|--------|
-| 运行时 | AI 应用右上角「模型管理」（管理员） | 模型接入、启停、默认模型、能力开关（思考/联网） |
-| 基础设施 | `server/.env`（可用 ClassIntraOps 密钥页配置） | 内置模型（`default` / `deepseek`）留空字段的兜底值，Tavily 搜索密钥 |
-
-::: tip 优先级
-模型注册表中内置行的 `api_url` / `api_key` / `model` 留空时回退到环境变量；管理面板填写的值优先于 `.env`。自定义模型必须在面板中完整填写地址与密钥。
-:::
-
-### 内置模型兜底（环境变量）
-
-`AI_*` 与 `DEEPSEEK_*` 仅作为模型注册表两条内置种子行的兜底值：
-
-| 变量 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `AI_API_KEY` | string | （空） | 内置 `default` 模型的 API Key |
-| `AI_API_URL` | string | （空） | OpenAI Chat Completions 兼容接口地址 |
-| `AI_MODEL` | string | `gpt-3.5-turbo` | 请求体 `model` 参数兜底值 |
-| `AI_AVAILABLE_MODELS` | string | — | 历史遗留（v1.2 前的子模型切换），仅作初始化参考 |
-| `DEEPSEEK_API_KEY` | string | （空） | 内置 `deepseek` 模型的 API Key |
-| `DEEPSEEK_API_URL` | string | `https://api.deepseek.com/chat/completions` | DeepSeek 接口地址 |
-| `DEEPSEEK_MODEL` | string | `deepseek-chat` | 默认模型 |
-
-::: warning 思考模式参数风格
-支持「深度思考」的模型需在管理面板选择思考参数风格：**DeepSeek / GLM 风格**（注入 `thinking: {type: enabled}`）或 **OpenAI 标准**（不注入专用参数）。选错风格可能导致上游返回 422。
+::: warning RS256 私钥保护
+- 默认密钥对落盘 `server/keys/jwt-private.pem`（权限 600）与 `jwt-public.pem`，首次启动自动生成，无需手工配置
+- 私钥**不出本机**、不可提交 Git；`server/keys/` 属敏感目录，备份时加密保存
+- 验签优先走非对称算法白名单（RS256/RS384/RS512/ES256/ES384/ES512，显式指定防降级攻击），失败再退 HS256（`JWT_SECRET`）验旧 token，旧 token 平滑过渡不登出
 :::
 
 ## 天气配置
@@ -105,19 +76,6 @@ ClassIntra 集成 [和风天气](https://www.qweather.com/) 服务，支持 API 
 
 ::: warning 私钥保护
 `QWEATHER_PRIVATE_KEY` 是敏感信息，文件权限设为 600，**不可提交到 Git**。`server/.env` 已在 `.gitignore` 中。
-:::
-
-## 搜索配置
-
-AI 聊天的联网搜索功能基于 [Tavily](https://tavily.com/)。模型注册表中勾选了「联网搜索」能力的模型，对话时会自动调用搜索工具。
-
-| 变量 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `TAVILY_API_KEY` | string | （空） | Tavily API Key |
-| `TAVILY_API_URL` | string | `https://api.tavily.com/search` | Tavily 搜索接口地址 |
-
-::: tip 未配置时的行为
-未设置 `TAVILY_API_KEY` 时，即使模型勾选了联网搜索能力，实际请求也不会携带搜索工具，普通对话不受影响。
 :::
 
 ## 数据存储配置
@@ -154,6 +112,10 @@ SQLite 备份**必须**包含以下三个文件：
 | `RELAY_PORT` | number | `10011` | 本节点中继监听端口 |
 | `COHORT` | string | （空） | 届数标识，逗号分隔，同届才同步；留空自动从 `ADMIN_USER_IDS` 推断 |
 
+::: tip RELAY_SECRET 与 JWT 无关
+`RELAY_SECRET` 用于跨班 Relay 消息同步、`POST /api/auth/relay-verify` 跨班联登校验，以及 Cluss 联动桥鉴权（请求头 `X-Bridge-Secret` 与其同值），与 JWT 签名（RS256）无关。
+:::
+
 ::: tip 配置示例
 ```bash
 # 服务器 A
@@ -171,6 +133,26 @@ RELAY_PORT=10011
 COHORT=25
 ```
 :::
+
+## 插件与集成
+
+### 兼容模式（web-proxy 插件）
+
+web-proxy 插件（静态反代 9101 + 老内核兼容渲染）随主程序自动启动：
+
+| 变量 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `WEB_PROXY_AUTOSTART` | number | `1` | 是否随主程序自动启动，设 `0` 关闭 |
+
+### 云盘 bot 转运（Cluss 集成）
+
+AstrBot 下载的媒体文件被学生转存云盘时，改由 bot 硬链接转运（同盘零占用；转运不可达时自动回退本地复制）：
+
+| 变量 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `BOT_TRANSFER_URL` | string | `http://127.0.0.1:6200` | AstrBot 插件转运接口地址 |
+| `BOT_TRANSFER_TOKEN` | string | （空） | 转运接口鉴权 token，插件未开鉴权时留空 |
+| `BOT_TRANSFER_TIMEOUT_MS` | number | `10000` | 转运请求超时（毫秒） |
 
 ## 同步配置
 
@@ -223,7 +205,7 @@ RELAY_SERVERS=100.64.0.2:10011
 PORT=9001
 WS_PORT=10001
 
-JWT_SECRET=<32 字符随机串>
+# JWT 默认 RS256：私钥首次启动自动生成于 server/keys/（可选 JWT_PRIVATE_KEY）
 JWT_EXPIRES_IN=7d
 
 ADMIN_USER_IDS=250100
@@ -244,22 +226,20 @@ VERBOSE_LOG=0
 PORT=9001
 WS_PORT=10001
 
-JWT_SECRET=<32 字符随机串>
+# JWT 默认 RS256，私钥首次启动自动生成于 server/keys/；可选显式指定
+# JWT_PRIVATE_KEY=
 JWT_EXPIRES_IN=7d
 
 ADMIN_USER_IDS=250100
 COHORT=25
 
-# AI / 天气 / 搜索
-AI_API_KEY=<your-key>
-AI_API_URL=https://api.openai.com/v1/chat/completions
-AI_MODEL=gpt-4o-mini
+# 天气
 QWEATHER_KEY=<your-qweather-key>
 QWEATHER_LOCATION=116.41,39.92
-TAVILY_API_KEY=<your-tavily-key>
 
 # 安全
 HTTPS=true
+HTTPS_PORT=9443
 CORS_ORIGINS=https://classintra.example.edu
 
 # 数据存储
@@ -279,7 +259,7 @@ VERBOSE_LOG=0
 # 服务器 A（1 班）
 PORT=9001
 WS_PORT=10001
-JWT_SECRET=<32 字符随机串>
+JWT_EXPIRES_IN=7d
 ADMIN_USER_IDS=250100
 COHORT=25
 DB_PATH=./database/classintra.db
@@ -292,7 +272,7 @@ RELAY_PORT=10011
 # 服务器 B（2 班）
 # PORT=9001
 # WS_PORT=10001
-# JWT_SECRET=<同 A，或不同>
+# JWT 默认 RS256，各机私钥独立自动生成，互不影响
 # ADMIN_USER_IDS=250200
 # COHORT=25
 # RELAY_SERVER_ID=class-2

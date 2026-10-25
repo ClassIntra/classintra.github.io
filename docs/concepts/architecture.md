@@ -220,14 +220,14 @@ search.registerCommand({
   action: function() { /* ... */ }
 });
 
-// 注册自定义 Provider（异步）
+// 注册自定义 Provider（异步，如社区帖子搜索）
 search.registerProvider({
-  id: 'notes',
-  category: '笔记',
+  id: 'community',
+  category: '社区',
   search: function(query) {
-    return fetch('/api/notes/search?q=' + encodeURIComponent(query))
+    return fetch('/api/community/search?q=' + encodeURIComponent(query))
       .then(function(r) { return r.json(); })
-      .then(function(data) { return data.items; });
+      .then(function(data) { return data.data.posts; });
   }
 });
 ```
@@ -355,7 +355,7 @@ express app.use(mountPath, router)
 - 应用主题 + 初始化动画开关
 - 拉取用户状态 + 用户设置（壁纸/主题同步）
 - 注册 WebSocket 消息处理（封禁 / 应用更新 / 权限变更 / 天气预警）
-- 启动心跳检测（2 秒间隔，5 次失败才锁屏）
+- 启动心跳检测（2 秒间隔，连续 5 次失败触发断网保护锁）
 - 注册 `Ctrl+K` 全局搜索快捷键
 - 启动更新检查器
 
@@ -381,6 +381,8 @@ express app.use(mountPath, router)
     ↓
 7. （可选）LifecycleOrchestrator.startup()  — 分阶段启动（本期预留）
 ```
+
+插件 `web-proxy`（浏览器兼容模式，挂载 `/api/web-proxy`）随主程序自动启动加载（`WEB_PROXY_AUTOSTART=0` 可关闭），详见 [web-proxy 插件](/development/web-proxy)。
 
 ::: warning 数据库初始化顺序
 后端启动时数据库初始化的调用顺序严格为：

@@ -5,7 +5,7 @@ description: ClassIntra WebSocket 通信系统，包含连接流程（URL、JWT 
 
 # 实时通信
 
-ClassIntra 的实时通信同时支持 WebSocket 和 HTTP 长轮询。现代浏览器优先使用 WebSocket；腾讯 X5、TBS、旧版 Android WebView 或 WebSocket 握手失败时使用 HTTP。后端 `ws/chat-server.js` 负责聊天连接，`realtime-bus.js` 提供不依赖 Chat 应用的第三方扩展实时事件通道。
+ClassIntra 的实时通信同时支持 WebSocket 和 HTTP 长轮询。现代浏览器优先使用 WebSocket；腾讯 X5、TBS、旧版 Android WebView 或 WebSocket 握手失败时使用 HTTP。后端 `ws/chat-server.js` 负责聊天连接，`realtime-bus.js` 提供不依赖 Chat 应用的第三方扩展实时事件通道——该通道现已接入同一 WS 连接（WebSocket 优先，X5/不支持时降级为长轮询），第三方经 `context.realtime` 订阅即可，无需自行建立 WebSocket。
 
 源码位置：`server/src/ws/chat-server.js`、`client/src/utils/websocket.js`、`server/src/utils/relay-bus.js`
 
@@ -73,9 +73,18 @@ reconnectAttempts < maxReconnectAttempts ?
 当 WebSocket 不可用（浏览器不支持或重连超过 10 次）时，`WebSocketManager` 自动切换到 `_transport = 'poll'` 模式，通过 HTTP 长轮询保持消息收发能力。这确保在严格受限网络环境下仍能使用聊天功能。
 :::
 
-## 第三方扩展 HTTP 通道
+::: tip 兼容模式画面流不占用聊天 WS
+超能岛浏览器「兼容模式」的服务端渲染画面推流由 `web-proxy` 插件承载，走**独立端口 9101**（`ws://<host>:9101/__render__`，HTTP API 挂载 `/api/web-proxy`），与聊天 WS（10001）互不占用。详见 [web-proxy 插件](/development/web-proxy)。
+:::
 
-市场应用通过 `context.realtime` 使用全局 HTTP 实时事件，不应自行调用 `new WebSocket()`：
+## 第三方实时事件通道（WS 优先，长轮询兜底）
+
+自 v1.4.0 起，第三方扩展实时事件通道接入同一 WS 连接（10001），**WebSocket 优先**：
+
+- **上行**：经核心 WS 发送消息 type `realtime_publish`（携带事件名与 payload）
+- **下行**：服务端以 type `extension_event` 推送给在线用户
+
+市场应用通过 `context.realtime` 使用该通道，不应自行调用 `new WebSocket()`：
 
 ```javascript
 var stop = context.realtime.subscribe('plugin.updated', function(payload) {
@@ -86,7 +95,16 @@ context.realtime.publish('plugin.updated', { version: '1.0.1' }, context.appName
 stop();
 ```
 
-该通道的接口位于 `/api/realtime`，需要 JWT 鉴权。扩展事件与 Chat 应用解耦，即使 Chat 应用未启用，第三方扩展仍可使用 HTTP 实时通信。
+当客户端处于长轮询模式（X5 等老内核或 WS 不可用）时，HTTP 长轮询端点作为兜底保留，均位于 `/api/realtime`，需要 JWT 鉴权：
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| `POST` | `/api/realtime/publish` | 发布事件（上行） |
+| `POST` | `/api/realtime/poll/register` | 注册长轮询订阅 |
+| `GET` | `/api/realtime/poll` | 拉取事件（下行） |
+| `POST` | `/api/realtime/poll/unregister` | 注销订阅 |
+
+扩展事件与 Chat 应用解耦，即使 Chat 应用未启用，第三方扩展仍可使用实时通信。
 
 ## 消息类型表格
 
@@ -101,6 +119,8 @@ ClassIntra WebSocket 消息分为以下类型，均通过 `data.type` 字段区�
 | 消息撤回 | `message_recalled` | 服务端 → 客户端 | 撤回通知（公共/私聊/群聊通用） |
 | 在线状态 | `user_online` / `user_offline` | 服务端 → 客户端 | 用户上下线广播 |
 | 心跳 | `ping` / `pong` | 双向 | 保活探测 |
+| 扩展事件上行 | `realtime_publish` | 客户端 → 服务端 | 第三方扩展发布实时事件 |
+| 扩展事件下行 | `extension_event` | 服务端 → 客户端 | 第三方实时事件推送给在线用户 |
 | 系统通知 | `system_notification` | 服务端 → 客户端 | 封禁、应用更新、权限变更、天气预警 |
 | 广播 | `broadcast` | 服务端 → 客户端 | 管理员全局广播 |
 

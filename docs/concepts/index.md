@@ -103,9 +103,8 @@ ClassIntra/
 ├── apps/                       # 应用层（每个应用一个目录）
 │   ├── countdown/
 │   ├── calendar/
-│   ├── notes/
 │   ├── resource/               # 资源仓库
-│   ├── ai-chat/
+│   ├── profile/                # 个人主页
 │   ├── chat/
 │   ├── community/
 │   ├── timetable/

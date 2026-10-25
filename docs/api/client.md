@@ -475,7 +475,7 @@ var store = getPersistenceStore();
 var theme = store.get('theme', 'light');  // 'dark' 或 'light'
 
 // 写入（自动 JSON 序列化）
-store.set('recentApps', ['chat', 'notes', 'weather']);
+store.set('recentApps', ['chat', 'calendar', 'weather']);
 
 // 删除
 store.remove('tempData');
@@ -591,8 +591,8 @@ WebSocket 客户端管理器，支持自动重连、心跳保活、HTTP 长轮�
 ```javascript
 import wsManager from '@/utils/websocket';
 
-// 连接时自动从 localStorage 读取 token，拼接为 ws://host:port/ws?token=xxx
-wsManager.connect('ws://localhost:5001/ws');
+// 连接时自动从 localStorage 读取 token，拼接为 ws(s)://<host>:10001/?token=<JWT>
+wsManager.connect('ws://localhost:10001');
 ```
 
 连接成功后：
@@ -605,7 +605,7 @@ wsManager.connect('ws://localhost:5001/ws');
 :::
 
 ::: warning HTTP 长轮询回退
-当浏览器不支持 WebSocket（如腾讯 X5、TBS 或旧版 Android WebView）或 WS 连接多次失败时，会自动切换到 HTTP 长轮询模式（`_transport = 'poll'`），通过 `POST /api/chat/poll/register` 和 `GET /api/chat/poll?since=<ts>` 拉取聊天事件。第三方应用应使用 `context.realtime` 访问独立的 `/api/realtime` 通道。
+当浏览器不支持 WebSocket（如腾讯 X5、TBS 或旧版 Android WebView）或 WS 连接多次失败时，会自动切换到 HTTP 长轮询模式（`_transport = 'poll'`），通过 `POST /api/chat/poll/register` 和 `GET /api/chat/poll?since=<ts>` 拉取聊天事件。第三方应用应使用 `context.realtime` 接收扩展事件——它复用本 WS 连接（含上面的长轮询回退），因此**无需自行建立 WebSocket**。
 :::
 
 ### send
@@ -664,8 +664,8 @@ wsManager.disconnect();
 import wsManager from '@/utils/websocket';
 import store from '@/store';
 
-// 启动连接
-wsManager.connect('ws://' + location.host + '/ws');
+// 启动连接（token 由 connect 自动从 localStorage 读取并拼接）
+wsManager.connect('ws://' + location.hostname + ':10001');
 
 // 监听消息
 wsManager.on('chat', function(data) {
