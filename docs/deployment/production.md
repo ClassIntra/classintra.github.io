@@ -220,8 +220,8 @@ module.exports = {
 启动服务：
 
 ```bash
-# 启动 PM2 守护进程
-pm2 start ecosystem.config.js
+# 启动 PM2 守护进程（只启动通用部署需要的两个进程）
+pm2 start ecosystem.config.js --only classintra-server,classintra-https
 
 # 保存进程列表（开机自启）
 pm2 save
@@ -235,16 +235,23 @@ pm2 startup
 
 `ecosystem.config.js` 共定义五个进程：
 
-| 进程 | 说明 |
-|------|------|
-| `classintra-server` | 主服务：HTTP 9001、WS 10001、Relay 10011 |
-| `classintra-https` | HTTPS 9443（`src/app-https.js`，`WS_MIRROR_MODE=true` 的 9001 镜像实例，不监听 WS/Relay） |
-| `tunnel-gateway` | 隧道网关 10111 |
-| `chmlfrp-frpc` | CHMLFRP 内网穿透 frpc 客户端 |
-| `pcagent` | noVNC 设备远程代理（Python） |
+| 进程 | 说明 | 通用部署 |
+|------|------|---------|
+| `classintra-server` | 主服务：HTTP 9001、WS 10001、Relay 10011 | 需要 |
+| `classintra-https` | HTTPS 9443（`src/app-https.js`，`WS_MIRROR_MODE=true` 的 9001 镜像实例，不监听 WS/Relay） | 需要 |
+| `tunnel-gateway` | 隧道网关 10111 | 不需要 |
+| `chmlfrp-frpc` | CHMLFRP 内网穿透 frpc 客户端 | 不需要 |
+| `pcagent` | noVNC 设备远程代理（Python） | 不需要 |
+
+::: warning 后三个进程不要启动
+`tunnel-gateway`、`chmlfrp-frpc`、`pcagent` 是特定部署站点用的公网隧道与远程运维配套，
+在 `ecosystem.config.js` 里**写死了那台机器的绝对路径**（`C:\Users\...\ChmlFrp-...`、
+`D:\NetWork\noVNC\pcagent`）。在其他机器上启动必然失败并反复重启，所以用上面的 `--only` 只拉两个进程。
+若已误启动：`pm2 delete tunnel-gateway chmlfrp-frpc pcagent && pm2 save`。
+:::
 
 ::: tip
-`pm2 status` 应看到五个进程均为 `online`。HTTPS 端口如需更换，改 `server/.env` 的 `HTTPS_PORT` 后走「应用配置重启」（`pm2 restart ecosystem.config.js --update-env`）。
+`pm2 status` 应看到 `classintra-server` 与 `classintra-https` 两个进程为 `online`。HTTPS 端口如需更换，改 `server/.env` 的 `HTTPS_PORT` 后走「应用配置重启」（`pm2 restart ecosystem.config.js --update-env`）。
 :::
 
 ::: tip Windows 开机自启
@@ -252,7 +259,7 @@ Windows 平台使用 [pm2-windows-startup](https://github.com/Unitech/pm2-window
 ```powershell
 npm install -g pm2-windows-startup
 pm2-startup install
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.js --only classintra-server,classintra-https
 pm2 save
 ```
 :::

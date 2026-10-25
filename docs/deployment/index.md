@@ -16,16 +16,24 @@ ClassIntra 是面向校园内网的 WebOS 平台，支持单机部署、PM2 生�
 
 | 部署方式 | 适用场景 | 启动命令 | 进程管理 | 复杂度 | 推荐指数 |
 |---------|---------|---------|---------|--------|---------|
+| **运维控制台（Ops）** | 零基础用户、Windows 单机 | 双击 exe，图形操作 | 控制台代管 PM2 | ★ | ⭐⭐⭐⭐⭐ |
 | **开发模式** | 本地开发调试 | `pnpm dev` | Vite + Node（前台） | ★ | ⭐⭐⭐⭐⭐ |
 | **生产模式** | 单机上线、教育场景 | `pnpm build && pnpm start` | PM2 守护 | ★★ | ⭐⭐⭐⭐⭐ |
-| **PM2 中继模式** | 多班级跨机联动 | `pm2 start ecosystem.config.js` | PM2 + Relay Bus | ★★★ | ⭐⭐⭐⭐ |
+| **PM2 中继模式** | 多班级跨机联动 | `pm2 start ecosystem.config.js --only classintra-server,classintra-https` | PM2 + Relay Bus | ★★★ | ⭐⭐⭐⭐ |
 | **Docker 化部署** | 容器化环境（实验性） | `docker compose up` | Docker / Compose | ★★★ | ⭐⭐⭐ |
 
 ::: tip 选型建议
-- **教育场景（一班一机）**：生产模式 + PM2 守护，简单稳定
+- **零基础 / 不想碰命令行**：用 [运维控制台 Ops](/ops/)，拉代码、装依赖、构建、启动、看日志全在图形界面里
+- **教育场景（一班一机）**：生产模式 + PM2 守护，简单稳定；完整步骤见 [10 分钟部署上线](/deployment/beginner)
 - **多班级联动**：PM2 中继模式，配置 `RELAY_SERVERS` 实现跨机消息同步
 - **公网访问**：在 PM2 基础上加 Nginx 反向代理 + HTTPS（参考 [生产部署](./production)）
 - **跨校区组网**：Tailscale VPN + Relay 中继（参考 [教育场景](./education)）
+:::
+
+::: warning PM2 启动请加 `--only`
+`ecosystem.config.js` 含五个进程，其中 `tunnel-gateway`、`chmlfrp-frpc`、`pcagent` 是特定站点的
+公网隧道与运维配套，写死了本机绝对路径。通用部署只需 `classintra-server` 与 `classintra-https`，
+写法为 `pm2 start ecosystem.config.js --only classintra-server,classintra-https`。
 :::
 
 ## 系统要求

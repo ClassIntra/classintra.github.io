@@ -10,11 +10,11 @@ hero:
       text: 🚀 10 分钟部署
       link: /deployment/beginner
     - theme: alt
+      text: 🧰 运维控制台（零命令行）
+      link: /ops/
+    - theme: alt
       text: 🧑‍💻 写第一个应用
       link: /development/first-app
-    - theme: alt
-      text: 🧰 运维控制台
-      link: /ops/
     - theme: alt
       text: 📖 使用指南
       link: /quick-start/basic-usage
@@ -74,7 +74,8 @@ features:
 
 | 板块 | 描述 | 链接 |
 |------|------|------|
-| 🚀 10 分钟部署 | 零基础保姆级部署：装、初始化、让全班平板连上 | [进入](/deployment/beginner) |
+| 🚀 10 分钟部署 | 零基础保姆级部署：装、初始化、让全班平板连上（含 Ops 图形界面方式） | [进入](/deployment/beginner) |
+| 🧰 运维控制台 | ClassIntraOps 桌面工具：下载、图形界面完成部署与日常运维（测试版） | [进入](/ops/) |
 | 🧑‍💻 写第一个应用 | 第三方开发者教程：从脚手架到发布上架 | [进入](/development/first-app) |
 | 🚀 快速开始 | 安装、启动、基本使用 | [进入](/quick-start/) |
 | 🧠 核心概念 | 架构、应用、Manifest、主题、WebSocket、认证 | [进入](/concepts/) |
@@ -82,7 +83,6 @@ features:
 | 🚢 部署运维 | 生产部署、教育场景、配置项、监控 | [进入](/deployment/) |
 | 📡 API 参考 | 服务端 API、前端 API、类型定义 | [进入](/api/) |
 | 🎨 UI & 主题 | 组件库、主题定制、图标系统 | [进入](/ui/) |
-| 🧰 运维控制台 | ClassIntraOps 桌面工具下载与使用指引（测试版） | [进入](/ops/) |
 
 ## 宣传片
 

@@ -38,6 +38,29 @@ dotnet run -c Release
 3. **配置密钥**：仓库就位后自动进入「密钥配置」—— 表单由 `server/.env.example` 推导，密钥打码不回显、留空不覆盖、保存自动备份
 4. **启动服务**：总览页「启动全部」，或安装时勾选启动；改过 `.env` 后必须走「**应用配置重启**」（`pm2 restart ecosystem.config.js --update-env`），普通 restart 不会重新加载环境变量
 
+::: danger 注意：「启动全部」会拉起 ecosystem 里的全部五个进程
+`ecosystem.config.js` 里定义了五个进程，但其中三个是特定部署站点用的公网隧道与远程运维配套：
+
+| 进程 | 用途 | 普通部署 |
+|---|---|---|
+| `classintra-server` | HTTP 9001 / WS 10001 / Relay 10011 主实例 | **需要** |
+| `classintra-https` | HTTPS 9443（TLS 镜像实例） | **需要** |
+| `tunnel-gateway` | 隧道网关，供内网穿透用 | 不需要 |
+| `chmlfrp-frpc` | CHMLFRP 内网穿透客户端 | 不需要 |
+| `pcagent` | 远程运维代理 | 不需要 |
+
+后三个在 `ecosystem.config.js` 里**写死了特定机器的绝对路径**（`C:\Users\...\ChmlFrp-...`、
+`D:\NetWork\noVNC\pcagent`），在任何其他机器上都会启动失败并进入反复重启。
+
+**处理**：首次启动后打开总览页，确认只有 `classintra-server` 与 `classintra-https` 是 `online`，
+其余三个执行一次清理：
+
+```bash
+pm2 delete tunnel-gateway chmlfrp-frpc pcagent
+pm2 save
+```
+:::
+
 ::: tip 门禁说明
 在 CI 仓库就位之前，**密钥配置 / 跨班对端 / 服务日志**三页会在导航上保持禁用（图标压暗）—— 这是为了避免你对着空数据猜。总览、安装更新、环境设置始终可用。
 :::
