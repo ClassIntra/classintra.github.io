@@ -1,6 +1,6 @@
 ---
 title: 第三方应用开发
-description: ClassIntra 第三方应用开发指南。涵盖两条接入路线（官方内置应用与市场应用）、manifest.json 字段、Chrome 80 兼容红线、同页面运行时契约、设计令牌一致性、能力披露与生命周期回收。
+description: ClassIntra 第三方应用开发指南。涵盖两条接入路线、三种运行形态（微前端/静态站/独立端口服务）、manifest.json 字段、entry/overlay/widgets 契约、Chrome 80 兼容红线、同页面运行时 context、设计令牌一致性、能力披露与卸载清理钩子。
 ---
 
 # 第三方应用开发
@@ -39,32 +39,59 @@ ClassIntra 的应用接入有**两条路线**，先明确你属于哪一条，�
 `iframe` 沙箱会切断主题令牌继承、阻断 DOM 复用、并让「像系统原生应用一样」的观感无法实现。ClassIntra 选择信任开发者，用**契约 + 审查**替代**运行时隔离**（详见 [外部系统集成](/development/integration)）。
 :::
 
+> 官方应用（`apps/`）与市场应用（`market-apps/`）的差异：市场应用不参与 Vite 构建，前端是运行时注入的原生 ES5 脚本；生命周期完全由市场管理（安装/更新/卸载/启停均不重启服务器）。
+
+---
+
+## 三种运行形态
+
+市场应用有**三种运行形态**，按项目性质选择：
+
+| 形态 | 适用 | 前端 | 后端 |
+|---|---|---|---|
+| **微前端**（默认） | 深度集成：要小组件/悬浮层/跟随主题/SDK | `frontend/entry.js`（define 契约） | 可选 express router 挂 `/api/<name>` |
+| **静态站** `frontend.static` | 存量项目零适配迁入（vite/webpack 的 dist 拷入即跑） | `frontend/index.html`（iframe 同源加载） | 无 |
+| **独立端口服务** `backend.process` | 自带进程的服务（游戏联机服务器、算法服务等） | 任意（常配静态站做壳） | 独立进程，主服务托管 + 反代 |
+
+微前端形态是本页主线（[前端入口](#前端入口-微前端形态)起步）。静态站与独立端口服务的契约分别见
+[静态站形态](#静态站形态-存量项目迁入) 与 [独立端口服务形态](#独立端口服务形态)；
+已有独立项目迁入的手把手步骤见 [存量项目迁入指南](/development/migration)。
+
+::: tip 用脚手架生成，别手写
+统一脚手架入口覆盖全部形态：
+
+```bash
+node scripts/create.mjs app my-app --label "我的应用" --with-backend   # 微前端应用
+node scripts/create.mjs site my-app        # 静态站（存量前端项目迁入）
+node scripts/create.mjs service my-svc     # 独立端口服务（--lang python 可选）
+```
+
+生成的模板已预置 ES5 语法、`--ci-*` 令牌消费与 `onDestroy` 回收契约，开箱即可通过审查（0 错误 0 警告）。
+比从零手写少踩三类最常见的坑。详见 [CLI 工具 § 应用脚手架](./cli#应用脚手架)。
+:::
+
 ---
 
 ## 目录结构
+
+微前端形态的完整目录（可选文件按需取用）：
 
 ```text
 my-app/
 ├── manifest.json              # 必填
 ├── icon.svg                   # 可选
 ├── frontend/
-│   ├── entry.js               # 必填，入口脚本（纯 ES5）
+│   ├── entry.js               # 微前端形态必需（entry 契约，纯 ES5）
+│   ├── index.html             # 静态站形态入口（frontend.static 指向它）
 │   ├── style.css              # 可选
-│   └── widgets/               # 可选，桌面小组件
-│       └── widget.js
+│   └── overlay.js             # 可选（全局悬浮层，见下文）
 └── backend/
-    └── routes.js              # 可选，Express 路由（CommonJS）
+    ├── routes.js              # 可选，Express 路由（CommonJS，挂 /api/<name>）
+    ├── server.js              # 独立端口服务形态入口（独立进程）
+    └── cleanup.js             # 可选（卸载清理钩子，见生命周期章节）
 ```
 
 命名规范：目录名与 `name` 字段用 kebab-case（`my-app`），路由路径同（`/my-app`、`/api/my-app`）。
-
-::: tip 用脚手架生成，别手写
-```bash
-pnpm create:app my-app --label "我的应用" --with-backend
-```
-生成的模板已预置 ES5 语法、`--ci-*` 令牌消费与 `onDestroy` 回收契约，开箱即可通过审查（0 错误 0 警告）。
-比从零手写少踩三类最常见的坑。详见 [CLI 工具 § 应用脚手架](./cli#应用脚手架)。
-:::
 
 ---
 
@@ -88,6 +115,7 @@ pnpm create:app my-app --label "我的应用" --with-backend
 | `async` / `await` | Promise 链 |
 | 解构 `var { a } = o` | `var a = o.a` |
 | 展开 `...args` | `arguments` |
+| `Element.replaceChildren()` | `container.innerHTML = ''`（Chrome 86+，构建也不可转译） |
 
 ### 禁用 CSS
 
@@ -98,6 +126,8 @@ pnpm create:app my-app --label "我的应用" --with-backend
 | `aspect-ratio` | 需 Chrome 88+ | padding-top 百分比撑高 |
 | 容器查询 `@container` | 需 Chrome 105+ | 用 `ResizeObserver` 或媒体查询 |
 | `backdrop-filter` 重依赖 | 中低端设备掉帧 | 提供不透明降级（见令牌章节） |
+
+完整的语法与 CSS 降级对照见 [Chrome 80 兼容](./chrome-80-compat)。
 
 ### 实时通道
 
@@ -123,6 +153,7 @@ context.app.onDestroy(function () {
 ```json
 {
   "name": "my-app",
+  "type": "app",
   "label": "我的应用",
   "version": "1.0.0",
   "sdk": "1",
@@ -131,17 +162,25 @@ context.app.onDestroy(function () {
   "category": "desktop",
   "order": 20,
   "visibleRoles": [],
-  "capabilities": ["data.storage", "ui.toast"],
+  "capabilities": ["data.storage", "data.realtime", "ui.toast"],
   "layout": { "mode": "fullscreen" },
   "frontend": {
     "route": "/my-app",
     "entry": "./frontend/entry.js",
-    "style": "./frontend/style.css"
+    "style": "./frontend/style.css",
+    "overlay": "./frontend/overlay.js",
+    "widgets": [
+      { "id": "clock", "name": "时钟", "defaultSize": { "w": 2, "h": 1 } }
+    ]
   },
   "backend": {
     "mountPath": "/api/my-app",
-    "entry": "./backend/routes.js"
-  }
+    "entry": "./backend/routes.js",
+    "rateLimit": { "max": 120, "windowMs": 60000 }
+  },
+  "config": [
+    { "key": "API_KEY", "label": "上游密钥", "type": "secret", "required": true }
+  ]
 }
 ```
 
@@ -160,8 +199,37 @@ context.app.onDestroy(function () {
 | `visibleRoles` | string[] | 否 | `[]` | 可见角色白名单。**空数组 = 所有角色可见** |
 | `capabilities` | string[] | 否 | `[]` | 能力披露清单，安装前展示（**不拦截**） |
 | `layout` | object | 否 | — | 布局偏好，见下 |
-| `frontend` | object | 否 | — | 前端配置 |
+| `frontend` | object | 见下 | — | 前端配置 |
 | `backend` | object | 否 | — | 后端配置 |
+| `config` | array | 否 | `[]` | 应用配置声明（班管在管理端填写，密钥类型不回显明文） |
+
+### `frontend` 前端配置
+
+| 字段 | 说明 |
+|---|---|
+| `route` | 应用路由，**必填**，以 `/` 开头且全局唯一 |
+| `entry` | 微前端入口脚本。`static` 与 `entry` **至少其一** |
+| `static` | 静态站首页（包内相对路径，形如 `./frontend/index.html`）。声明时 `entry` 可省 |
+| `style` | 可选样式表 |
+| `overlay` | 可选全局悬浮层脚本（见 [全局悬浮层](#全局悬浮层-overlay)） |
+| `widgets` | 可选桌面小组件声明数组（见 [桌面小组件](#桌面小组件-可选)） |
+
+### `backend` 后端配置
+
+| 字段 | 说明 |
+|---|---|
+| `mountPath` | API 挂载点，以 `/api/` 开头且全局唯一 |
+| `entry` | Express Router 文件（express 形态）；进程形态下仅作包完整性锚点 |
+| `process` | 独立端口服务声明 `{ command?, entry, port }`，`port` 取 1024–65535（安装期探测冲突），见 [独立端口服务形态](#独立端口服务形态) |
+| `rateLimit` | 可选限流 `{ max, windowMs }` |
+
+### 硬校验（不满足直接拒装）
+
+- `frontend.route` 以 `/` 开头；`static` 与 `entry` 至少其一；
+- `backend.mountPath` 以 `/api/` 开头；
+- `sdk` 主版本 ≤ 当前系统版本；
+- `visibleRoles` 只能是 `classAdmin` / `admin` / `officer` / `student`；
+- `layout.mode` 不在枚举中 → 拒装。
 
 ### `sdk` 版本约束
 
@@ -185,12 +253,14 @@ context.app.onDestroy(function () {
 控制哪些角色在桌面看到此应用：
 
 ```json
-{ "visibleRoles": ["admin", "officer"] }
+{ "visibleRoles": ["classAdmin", "officer"] }
 ```
 
-合法值：`admin`（班管）/ `officer`（班干部）/ `student`（学生）。空数组或不写 = 全部可见。
+合法值：`classAdmin`（班管）/ `admin`（系统管理员）/ `officer`（班干部）/ `student`（学生）。空数组或不写 = 全部可见。
 
-未知角色名会产生警告（不阻断），便于发现拼写错误。
+::: warning 未知角色名会阻断安装
+写错角色名（如 `"teacher"`）会导致应用对所有人不可见——所以在安装阶段就拦截。合法值只有上面四个。
+:::
 
 ### `layout` 布局偏好
 
@@ -217,7 +287,7 @@ context.app.onDestroy(function () {
 
 ### `capabilities` 能力披露
 
-**这是披露，不是权限申请。** ClassIntra 不拦截未声明的能力，声明它只为了：
+**这是披露，不是权限申请。** ClassIntra 默认不拦截能力调用，声明它只为了：
 
 1. 安装前告诉班管「这个应用会用到什么」；
 2. 市场审核的参考依据。
@@ -228,70 +298,119 @@ context.app.onDestroy(function () {
 |---|---|
 | 数据 | `data.storage` `data.realtime` `data.http` |
 | 系统 | `system.notification` `system.clipboard` `system.share` `system.navigate` |
-| 界面 | `ui.toast` `ui.modal` `ui.sheet` |
+| 界面 | `ui.toast` `ui.modal` `ui.sheet` `ui.overlay` |
 | 应用自身 | `app.config` `app.storage` |
 | 设备 | `device.info` `device.filePicker` `device.camera` |
 
-未知能力名产生警告但不阻断——便于我们扩展清单，也帮你发现拼写错误。
+未知能力名不阻断安装（静态审查会提示「披露不准确」，帮你发现拼写错误）。
+
+::: info 部署端可以把披露升级为拦截
+部署者配置环境变量 `MARKET_RESTRICTED_CAPABILITIES`（逗号分隔，如 `"device.camera,data.http"`）后，
+声明了受限能力的应用**直接拒装**——敏感能力从「披露」升级为「默认拒绝」，强度由部署者决定。
+:::
 
 ---
 
-## 前端入口
+## 前端入口（微前端形态）
 
-市场前端入口通过全局 SDK 注册：
+市场前端入口是一个 IIFE，通过全局 SDK 注册。宿主在用户进入应用路由时加载：
 
 ```javascript
-window.ClassIntraMarket.define({
-  name: 'my-app',
-  mount: function (container, context) {
-    var el = document.createElement('div');
-    el.className = 'my-app-root';
-    el.textContent = 'Hello ClassIntra';
-    container.appendChild(el);
+(function() {
+  var timers = [];
 
-    // 注册清理：必须在 onDestroy 里回收一切
-    context.app.onDestroy(function () {
-      el.parentNode && el.parentNode.removeChild(el);
+  function mount(container, context) {
+    container.innerHTML = '<div class="my-root">你好</div>';
+    timers.push(setInterval(tick, 1000));
+
+    // 卸载契约：一切订阅/计时器在此登记，卸载时自动执行
+    context.app.onDestroy(function() {
+      timers.forEach(clearInterval);
     });
-  },
-  unmount: function (container) {
-    container.replaceChildren();
   }
-});
+
+  function unmount(container) {
+    container.innerHTML = '';
+  }
+
+  window.ClassIntraMarket.define({ name: 'my-app', mount: mount, unmount: unmount });
+})();
 ```
 
 ### `context` 提供的能力
 
-按命名空间分层，与 `capabilities` 清单一一对应。
+按**五大命名空间**分层：
 
-| 命名空间 | 内容 | 对应能力 |
-|---|---|---|
-| `context.appName` | 当前应用名 | — |
-| `context.app` | `onDestroy(fn)`、配置读写 | `app.config` `app.storage` |
-| `context.data` | `get` / `post`（HTTP）、`realtime`（WS 优先，长轮询兜底）、`storage`（命名空间存储） | `data.*` |
-| `context.ui` | `toast` / `modal` / `sheet`，返回原生 DOM 片段 | `ui.*` |
-| `context.system` | `notify` / `clipboard` / `share` / `navigate` | `system.*` |
-| `context.device` | `info` / `filePicker` / `camera` | `device.*` |
-| `context.theme` | 当前主题 id 与令牌读取 | — |
-| `context.router` | 路由跳转 | `system.navigate` |
+| 命名空间 | 内容 |
+|---|---|
+| `context.appName` | 当前应用名 |
+| `context.app` | `name` / `version` / `manifest` / `config`（读 manifest.config 声明的配置）、`onDestroy(fn)`（逆序执行）、`log` / `warn` / `error`（带 `[app:<name>]` 前缀，便于问题归因） |
+| `context.data` | `api` / `get` / `post`（自动附带登录态的 HTTP）、`realtime`（WS 优先，长轮询兜底）、`storage`（**强制** `ci:app:<name>:` 前缀的命名空间存储） |
+| `context.system` | `user` / `isLoggedIn`、`router` / `route`、`theme`（主题引擎）、`getToken(name)`（读当前主题令牌）、`eventBus`（订阅自动归属 `market:<name>`，销毁时整批退订）、`toast`（`alert` / `confirm` / `prompt`）、`modal`、`navigate(location)`、`goDesktop()`（返回桌面） |
+| `context.ui` | 预制 DOM 片段工厂：`button` / `card` / `list` / `badge` / `segmented` / `toggle` / `searchBar` / `emptyState` / `spinner` / `toast` / `sectionTitle` / `el` |
+| `context.compat` | `chromeVersion` / `isX5` / `isBelowBaseline`、`has('flex-gap')` 等能力探测——按探测结果降级而非按 UA 猜 |
 
 ::: tip `context.ui.*` 返回的是 DOM 片段而非 Vue 组件
 因为第三方不过构建，拿不到 `@vue/compiler`。UI 能力返回原生元素，你直接 `appendChild` 即可。这保证了零构建步骤。
 :::
 
-### 数据存储必须加命名空间
+::: info 向后兼容层
+context 顶层还挂着一组 v1 旧字段（`context.realtime` / `context.router` / `context.theme` / `context.toast` / `context.modal` / `context.user` / `context.eventBus` 等），保证既有第三方应用不失效。**新代码请统一走命名空间**。
+:::
 
-`localStorage` 是共享的。所有键名**必须**加 `ci:app:<name>:` 前缀：
+全部 API 签名见 [SDK 参考 § 运行时 context](./sdk#运行时-context)。
+
+### 数据存储必须走命名空间
+
+`localStorage` 是共享的。所有键名**必须**加 `ci:app:<name>:` 前缀——`context.data.storage` 已强制加前缀，只用它存本地数据：
 
 ```javascript
-// 正确
-localStorage.setItem('ci:app:my-app:settings', JSON.stringify(cfg));
+// 正确：storage 自动加 ci:app:my-app: 前缀
+context.data.storage.setItem('settings', JSON.stringify(cfg));
 
-// 错误：会污染宿主与其他应用
+// 错误：裸写 localStorage 会污染宿主与其他应用，且卸载时清不到
 localStorage.setItem('settings', JSON.stringify(cfg));
 ```
 
 运行时会在卸载时清理你的命名空间。用别的前缀，数据会残留。
+
+---
+
+## 桌面小组件（可选）
+
+在 manifest 的 `frontend.widgets[]` 声明（`id` / `name` / `description` / `defaultSize` / `minSize` / `maxSize` / `configSchema` / `permission`），并在 entry.js 的定义对象上提供渲染入口：
+
+```javascript
+window.ClassIntraMarket.define({
+  name: NAME,
+  mount: mount,          // 页面入口
+  unmount: unmount,
+  widgets: {             // 每个声明的小组件一个渲染器
+    clock: {
+      mount: function(el, config, context) { /* 往 el 里渲染，config 来自桌面配置 */ },
+      unmount: function(el) { /* 清理计时器与 DOM */ }
+    }
+  }
+});
+```
+
+- 用户在「桌面设置 → 小组件」里看到的名字是 `应用名 · 组件名`，添加后走桌面网格布局
+- `configSchema` 与官方小组件同一套（select/text/bool/number 四类字段，桌面自动生成配置弹窗），字段定义见 [小组件开发](./widgets)
+- 应用停用/卸载后，桌面布局里的该组件引用会被自动清理
+- 注意：manifest 里 widgets 的 `component` 字段对市场应用**无效**（不参与构建），渲染入口只认 entry.js 的 `widgets`
+
+---
+
+## 全局悬浮层（overlay）
+
+需要「桌宠」「倒计时浮窗」这类**任意页面都存在**的悬浮 UI 时，声明 `"frontend": { "overlay": "./frontend/overlay.js" }` + 能力披露 `ui.overlay`：
+
+- 应用处于**已安装且启用**状态时，宿主在**任意页面**加载 overlay.js 并挂载到 `document.body` 下的全屏容器（`position:fixed; inset:0; pointer-events:none; z-index:9400`——低于超能岛 10000 / 模态 10001 / Toast 99997 / 锁屏 99999，不遮挡页面其余交互）
+- 应用根元素**必须自带 `pointer-events:auto`** 才能接收点击
+- 注册方式与 entry.js 同构：`window.ClassIntraMarket.defineOverlay({ name, mount, unmount })`；`mount(container, context)` 同样拿到五大命名空间 context
+- 挂载/摘除/更新由宿主随市场清单自动同步（安装、卸载、启停、版本更新），**应用不要自己操纵 container 的存在性**
+- 悬浮层应尊重性能与场景：`document.hidden` 时停帧；锁屏会自然盖住它
+- 用户没「激活」你的悬浮功能时，`mount` 里可以什么都不渲染——零足迹是美德
 
 ---
 
@@ -306,7 +425,7 @@ localStorage.setItem('settings', JSON.stringify(cfg));
 | 事件监听 | `removeEventListener`（或用 `context.app.onDestroy` 统一清理） |
 | 定时器 | `clearInterval` / `clearTimeout` |
 | 实时订阅 | `context.data.realtime.subscribe()` 返回的取消函数 |
-| DOM 节点 | `container.replaceChildren()` 或移除自建节点 |
+| DOM 节点 | `container.innerHTML = ''` 或移除自建节点 |
 
 ### `context.app.onDestroy`
 
@@ -317,9 +436,31 @@ context.app.onDestroy(function () { clearInterval(timer); });
 context.app.onDestroy(function () { removeEventListener('resize', onResize); });
 ```
 
+### eventBus 订阅自动归属
+
+`context.system.eventBus` 的订阅被强制归属 `market:<name>`。即使你忘了退订，context 销毁时也会按归属**整批退订**——但这是兜底，不是许可，仍请显式退订。
+
 ### 运行时审计（开发期辅助）
 
-开发模式下，运行时会对 `window` 键、计时器、监听器做前后快照对比，把未回收项打到控制台。这不阻断运行，只提示。**上线前请把它清零。**
+开发模式下，运行时会审计你创建的计时器与监听器：卸载/挂起时自动回收；超阈值（默认 timers > 120 / listeners > 80）自动挂起应用。`window.__ciDiagnostics()` 可随时查看内核与市场状态。**上线前请把审计残留清零。**
+
+### 卸载清理钩子（cleanup.js）
+
+卸载时、删除应用目录之前，宿主执行 `backend/cleanup.js`（若存在）：
+
+```javascript
+// backend/cleanup.js —— 卸载即无痕的样板
+var path = require('path');
+var db = require(path.resolve(process.cwd(), 'src/utils/db'));
+module.exports = function cleanup(ctx) {
+  // ctx = { name, manifest }
+  db.prepare('DROP TABLE IF EXISTS my_app_items').run();
+  db.prepare("DELETE FROM user_kv_store WHERE key LIKE 'my-app:%'").run();
+};
+```
+
+- 钩子**失败会中止卸载**（文件与记录都在，修复后可重试）——所以钩子里只做清理，别做有风险的写操作
+- 你的后端（routes.js）自建了哪些表、写了哪些 kv，cleanup.js 就要清哪些——**这是市场应用的信誉分**
 
 ---
 
@@ -503,9 +644,62 @@ stmt.all.apply(null, values);
 stmt.all.apply(stmt, values);
 ```
 
+### 数据库与清理配套
+
+建表写在 routes.js 顶部（`CREATE TABLE IF NOT EXISTS`），**并配套 `backend/cleanup.js`**（见[生命周期与回收契约](#生命周期与回收契约)）——卸载即无痕是平台承诺，也是你的义务。
+
 ### 卸载后的行为
 
 应用卸载后，其 API 返回 **JSON 404**，而不是前端 `index.html`。不要指望前端路由能兜住。
+
+---
+
+## 静态站形态（存量项目迁入）
+
+已有 vite / webpack / 原生前端项目，想**零适配**跑进 ClassIntra——用静态站形态：
+
+```json
+{ "frontend": { "route": "/my-app", "static": "./frontend/index.html" } }
+```
+
+（声明 `static` 时 `entry` 可省。）把你项目的构建产物整个拷进 `frontend/`，宿主以**同源 iframe** 加载 `/market-static/<name>/...`：
+
+- 直接 `fetch('/api/...')` 调主服务 API；登录 token 在 `localStorage.getItem('token')`（同源共享）
+- 无需任何代码适配；Chrome 80 兼容红线**不适用**（那是你自己的构建产物，按你自己的目标浏览器来）
+- 主题令牌在 iframe 内不可见——要跟随主题请加一行 `<script src="/ci-adapter.js"></script>`（`CI.theme()` / `CI.onTheme()` / `CI.user()` / `CI.back()` / `CI.toast()`），或升级到微前端形态
+
+手把手步骤、CI 适配器用法与框架/语言矩阵见 [存量项目迁入指南](/development/migration)。
+
+---
+
+## 独立端口服务形态
+
+自带进程的服务（游戏联机服务器、算法服务等、非 Node 语言实现）用进程形态。manifest：
+
+```json
+{
+  "backend": {
+    "mountPath": "/api/my-svc",
+    "entry": "./backend/server.js",
+    "process": { "entry": "./backend/server.js", "port": 41234 }
+  }
+}
+```
+
+主服务负责：
+
+- **spawn 托管**：注入 `PORT` / `CI_APP_NAME` / `CI_APP_DIR` 环境变量；崩溃指数退避自动重启（上限 5 次）
+- **反代**：`/api/<name>/*` → `127.0.0.1:<port>`（仅 HTTP；WebSocket 暂不支持——联机类走 HTTP 轮询）
+- **启停联动**：应用停用/卸载自动终止进程树（Windows `taskkill /T`）；重启服务器自动拉起
+- **端口治理**：安装期探测端口冲突（已装应用声明冲突 / 系统占用都拒装）；只应绑定 `127.0.0.1`
+
+你的服务端唯一要改的一行：读环境变量 `PORT` 并只绑 `127.0.0.1`：
+
+```javascript
+server.listen(Number(process.env.PORT || 41234), '127.0.0.1', function () { /* ... */ });
+```
+
+`process.command` 是任意启动命令，Python / Go / Java / Rust 均可——宿主运行时由部署者预装、依赖随包分发等注意事项见 [存量项目迁入指南 § 框架 / 语言 / 规模矩阵](/development/migration#框架--语言--规模矩阵)。
 
 ---
 
@@ -558,42 +752,54 @@ adjustments: []        # { date, as_day, weeks, note }
 
 ---
 
-## 安装与生命周期
+## 开发循环与自检
 
-用户不需要克隆市场仓库。班级服务器读取 GitHub Raw 上的 catalog，按文件清单逐个下载：
+### 开发循环速查
 
-```text
-https://raw.githubusercontent.com/ClassIntra/market/main/index.json
-https://raw.githubusercontent.com/ClassIntra/market/main/apps/my-app/manifest.json
+```bash
+# 微前端应用骨架默认生成在主仓 market-apps/<name>/（--dir 可换位置）；
+# site / service / plugin / theme 直接生成在本地市场源（默认 <项目根>/../market，MARKET_LOCAL_DIR 可覆盖）
+node scripts/create.mjs app <name> [--label 显示名] [--with-backend]
+
+# 本地源开发循环：改代码 → 管理端市场 → 更新（重装）→ 前端硬刷新（/market-static 为 no-cache 直出）
+node scripts/build-app.js <name> --watch   # lint + 直出检查，文件变化自动重跑
+node scripts/diag.js market <name>         # 装前预检（与安装时同一校验器 + 文件完整性 + 路由冲突）
+node scripts/diag.js compat <name>         # Chrome 80 兼容 lint（语法 + CSS）
+pnpm review:market market-apps/<name>      # 静态审查五组检查（错误即退出码 1）
+node scripts/market-lifecycle-probe.mjs    # 生命周期回归探针（需本地服务器运行中）
 ```
 
-::: tip catalog 自 v1.3.0 起需要登录
-市场 catalog 读取接口（`GET /api/market/catalog`）为 requireAuth 接口。catalog 由**服务端代拉**并自动附带 Bearer Token，客户端无需额外处理。
-:::
+调试工具一览：浏览器控制台 `window.__ciDiagnostics()`（内核/市场状态一站式输出）、管理员打开 `/dev/runtime`（运行时检查器）、服务端日志 `[proc:<name>]` 前缀（独立进程输出）。更多手段见 [调试技巧](./debugging)。
 
-安装流程：
+market-apps 前端是**直出**：没有构建步骤，保存后刷新浏览器即生效；兼容性靠 [diag compat](./cli#校验器-diag) 与 `review:market` 把关，图标走 [图标满铺规范](#图标满铺规范)。
 
-1. 市场目录从 Local 或 GitHub source 读取 `index.json`；
-2. 服务端校验应用名、manifest、文件路径、文件数量与大小；
-3. 先写入临时目录，再**原子替换**运行时目录；
-4. 服务端热挂载后端路由；
-5. 客户端刷新市场 registry 与动态路由；
-6. 应用出现在桌面入口，按需加载前端脚本与样式。
+### 发布与上架
 
-**全程不需重启服务。**
+本地验证通过后，发布到市场源（`index.json` 生成、逐文件 sha256、ed25519 签名、推送）的完整流程见
+[市场应用生命周期 § 发布到市场源](./market-apps#发布到市场源)；双仓同步（市场维护者）命令见
+[CLI 工具 § 市场双仓同步](./cli#市场双仓同步-sync-market-市场维护者)。
 
-启用/禁用是**班级统一状态**。班管修改后服务端广播：
+### 自检清单
 
-```json
-{
-  "type": "market_app_control_changed",
-  "appName": "my-app",
-  "enabled": false,
-  "updatedBy": "999999"
-}
-```
+提交到市场前逐项确认：
 
-客户端据此刷新 registry、动态路由、桌面布局、Dock、文件夹、小组件与运行实例。正在使用被禁用应用的成员会自动返回桌面。
+- [ ] `entry.js` / `style.css` 中**无** `const` / `let` / 箭头函数 / 模板字符串 / `?.` / `??` / `class` / `replaceChildren`
+- [ ] 无 flex `gap`，无 `:is()` / `:where()`，无 `aspect-ratio`
+- [ ] 无直接 `new WebSocket(...)`，实时数据走 `context.data.realtime`
+- [ ] 所有本地存储只经 `context.data.storage`（前缀强制，卸载才能清干净）
+- [ ] 所有颜色、圆角、动效使用 `--ci-*` 令牌，未写裸值
+- [ ] 无 `transition: all`，无布局属性过渡，无从 `scale(0)` 起步
+- [ ] 毛玻璃有 `[data-perf="low"]` 降级
+- [ ] `context.app.onDestroy` 已回收监听器、定时器、实时订阅、DOM
+- [ ] 自建表 / 键值对有 `backend/cleanup.js` 对应清理
+- [ ] `manifest.json` 的 `capabilities` 与实际调用一致
+- [ ] 卸载后 API 返回 JSON 404 而非 HTML
+
+### 安装与生命周期速览
+
+用户不需要克隆市场仓库。班级服务器读取市场源 catalog（`GET /api/market/catalog`，自 v1.3.0 起需登录），校验后**原子替换**运行时目录并热挂载后端，全程不重启服务。启用/停用是班级统一状态，班管修改后广播同步到所有客户端。
+
+安装、更新、卸载的完整流程、班级管控与「谁负责清什么」的生命周期表，见 [市场应用生命周期](./market-apps)。
 
 ### 动态路由与直接访问
 
@@ -615,7 +821,8 @@ my-app/
 │   ├── entry.js
 │   └── style.css
 └── backend/
-    └── routes.js
+    ├── routes.js
+    └── cleanup.js
 ```
 
 ### 2. `manifest.json`
@@ -674,7 +881,7 @@ window.ClassIntraMarket.define({
     function onClick() {
       count += 1;
       value.textContent = String(count);
-      localStorage.setItem('ci:app:my-app:count', String(count));
+      context.data.storage.setItem('count', String(count));
 
       context.data.post('/api/my-app/incr', { delta: 1 })
         .then(function (res) {
@@ -705,7 +912,7 @@ window.ClassIntraMarket.define({
   },
 
   unmount: function (container) {
-    container.replaceChildren();
+    container.innerHTML = '';
   }
 });
 ```
@@ -778,20 +985,18 @@ router.post('/incr', auth.requireAuth, function (req, res) {
 module.exports = router;
 ```
 
-### 6. 自检清单
+### 6. `backend/cleanup.js`
 
-提交到市场前逐项确认：
+```javascript
+/* 卸载即无痕：与 routes.js 自建的数据一一对应 */
+var path = require('path');
+var db = require(path.resolve(process.cwd(), 'src/utils/db'));
 
-- [ ] `entry.js` / `style.css` 中**无** `const` / `let` / 箭头函数 / 模板字符串 / `?.` / `??` / `class`
-- [ ] 无 flex `gap`，无 `:is()` / `:where()`，无 `aspect-ratio`
-- [ ] 无直接 `new WebSocket(...)`，实时数据走 `context.data.realtime`
-- [ ] 所有 `localStorage` 键带 `ci:app:my-app:` 前缀
-- [ ] 所有颜色、圆角、动效使用 `--ci-*` 令牌，未写裸值
-- [ ] 无 `transition: all`，无布局属性过渡，无从 `scale(0)` 起步
-- [ ] 毛玻璃有 `[data-perf="low"]` 降级
-- [ ] `context.app.onDestroy` 已回收监听器、定时器、实时订阅、DOM
-- [ ] `manifest.json` 的 `capabilities` 与实际调用一致
-- [ ] 卸载后 API 返回 JSON 404 而非 HTML
+module.exports = function cleanup(ctx) {
+  db.prepare('DROP TABLE IF EXISTS my_counts').run();
+  db.prepare("DELETE FROM user_kv_store WHERE key LIKE 'my-app:%'").run();
+};
+```
 
 ### 7. 自动化检查
 
@@ -804,23 +1009,14 @@ node scripts/market-review.mjs <dir> --json    # 机器可读输出
 
 审查脚本按五组检查：manifest 合规 / Chrome 80 语法 / CSS 兼容 / 危险 API / 资源回收。**它不做运行时隔离**——只是在你提交前把常见问题标出来。存在错误时退出码为 1，可用于 CI 门禁。
 
-### 开发循环速查
-
-| 阶段 | 命令 |
-|------|------|
-| 生成骨架 | `pnpm create:app my-app --label "我的应用"` |
-| 边改边查 | `node scripts/build-app.js my-app --watch`（自动 compat lint + 提示刷新） |
-| 静态审查 | `pnpm review:market market-apps/my-app`（五组检查，错误即退出码 1） |
-| 双仓同步（市场维护者） | `.\scripts\sync-market.ps1 -App my-app [-Commit "feat: xxx"]` |
-
-market-apps 前端是**直出**：没有构建步骤，保存后刷新浏览器即生效；兼容性靠 [diag compat](./cli#校验器-diag) 与 `review:market` 把关，图标走 [图标满铺规范](#图标满铺规范)。
-
 ---
 
 ## 下一步
 
 - [SDK 参考](./sdk) — `context.*` 全部 API 签名
-- [市场应用生命周期](./market-apps) — 安装、更新、卸载、班级管控
+- [市场应用生命周期](./market-apps) — 安装、更新、卸载、班级管控、发布到市场源
+- [应用包格式开放规范](./package-spec) — 包格式与运行时契约的规范全文
+- [存量项目迁入指南](./migration) — 已有独立项目的四条迁入路径
 - [Chrome 80 兼容](./chrome-80-compat) — 完整的语法与 CSS 降级对照
 - [主题开发](./themes) — 令牌体系与自定义主题
 - [调试技巧](./debugging) — 前后端调试方法

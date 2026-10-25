@@ -7,11 +7,11 @@ hero:
   tagline: 校园内网 WebOS 平台 · 类 iOS 设计 · 横屏平板优化
   actions:
     - theme: brand
-      text: 🚀 快速开始
-      link: /quick-start/
+      text: 🚀 10 分钟部署
+      link: /deployment/beginner
     - theme: alt
-      text: 📦 安装部署
-      link: /quick-start/installation
+      text: 🧑‍💻 写第一个应用
+      link: /development/first-app
     - theme: alt
       text: 🧰 运维控制台
       link: /ops/
@@ -74,6 +74,8 @@ features:
 
 | 板块 | 描述 | 链接 |
 |------|------|------|
+| 🚀 10 分钟部署 | 零基础保姆级部署：装、初始化、让全班平板连上 | [进入](/deployment/beginner) |
+| 🧑‍💻 写第一个应用 | 第三方开发者教程：从脚手架到发布上架 | [进入](/development/first-app) |
 | 🚀 快速开始 | 安装、启动、基本使用 | [进入](/quick-start/) |
 | 🧠 核心概念 | 架构、应用、Manifest、主题、WebSocket、认证 | [进入](/concepts/) |
 | 🛠 开发指南 | 第三方应用开发、SDK、CLI、调试 | [进入](/development/) |

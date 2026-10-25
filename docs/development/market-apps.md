@@ -9,7 +9,7 @@ description: ClassIntra 第三方市场应用的安装、运行、更新、启�
 ClassIntra 市场应用是独立于官方内置应用的第三方应用包。班管负责安装、更新和卸载，班级成员通过实时同步获得统一的应用状态。
 
 ::: tip 先读开发指南
-本页讲**生命周期与管控**。写应用本身（兼容红线、令牌、`context.*`）请看 [第三方应用开发](./third-party)。
+本页讲**生命周期、管控与发布**。写应用本身（三种形态、兼容红线、令牌、`context.*`）请看 [第三方应用开发](./third-party)；存量项目迁入见 [存量项目迁入指南](./migration)；包格式规范全文见 [应用包格式开放规范](./package-spec)。
 :::
 
 ## 相关仓库
@@ -44,6 +44,18 @@ catalog 读取接口（`GET /api/market/catalog`）自 **v1.3.0 起需要登录*
 
 安装不要求重启服务。
 
+### 安装限制与文件白名单
+
+安装校验对包体有硬性上限（防误装巨型包拖垮班级服务器）：
+
+| 限制 | 默认值 | 部署端覆盖环境变量 |
+|---|---|---|
+| 单应用文件数 | 300 | `MARKET_MAX_FILES` |
+| 单文件大小 | 15MB | `MARKET_MAX_FILE_MB` |
+| 单应用总大小 | 80MB | `MARKET_MAX_TOTAL_MB` |
+
+扩展名走白名单（Web 资源 + 多语言源码与工程文件，如 `.py` / `.go` / `.rs` 等，供独立端口服务形态携带任意语言实现）——**`.vue` 不在白名单内**（市场应用不参与构建）。
+
 ## 安装前校验：能力披露与约束
 
 ClassIntra 采**开放模型**——不设沙箱，不拦截能力调用。但安装前仍会做四类校验，目的是**把问题说清楚**而不是静默失败。
@@ -66,21 +78,26 @@ ClassIntra 采**开放模型**——不设沙箱，不拦截能力调用。但�
 `visibleRoles` 控制哪些角色能看到该应用：
 
 ```json
-{ "visibleRoles": ["admin", "officer"] }
+{ "visibleRoles": ["classAdmin", "officer"] }
 ```
 
-合法值：`admin` / `officer` / `student`。空数组 = 全部可见。
+合法值：`classAdmin`（班管）/ `admin`（系统管理员）/ `officer`（班干部）/ `student`（学生）。空数组 = 全部可见。
 
 ::: warning 未知角色名会阻断安装
-写错角色名（如 `"teacher"`）会导致应用对所有人不可见，且不报错——所以在安装阶段就拦截。合法值只有这三个。
+写错角色名（如 `"teacher"`）会导致应用对所有人不可见，且不报错——所以在安装阶段就拦截。合法值只有上面四个。
 :::
 
-## 提交前静态审查
+## 提交前预检与静态审查
 
-仓库提供审查脚本，用于在提交市场前自查：
+装前预检与静态审查是发布前的两道闸：
 
 ```bash
 # 从 ClassIntra 主仓库根目录运行
+
+# 装前预检：与安装时同一校验器 + 文件完整性 + 路由冲突（覆盖 market-apps/ 与本地市场源 ../market/apps/）
+node scripts/diag.js market <应用名>
+
+# 静态审查：五组规则扫描源码
 node scripts/market-review.mjs <应用目录>
 
 # 机器可读输出
@@ -207,7 +224,7 @@ http://127.0.0.1:5174/gomoku
 
 ## 更新与卸载
 
-更新使用相同的 manifest 和文件校验，并进行原子替换；成功后重新加载新版本 JS/CSS，不重启服务。
+更新使用相同的 manifest 和文件校验，并进行原子替换；成功后重新加载新版本 JS/CSS，不重启服务，且**保留启用状态与本地数据**。
 
 卸载时清理：
 
@@ -219,6 +236,83 @@ http://127.0.0.1:5174/gomoku
 - 动态路由映射。
 
 已卸载应用的 API 返回 JSON 404，而不是前端 `index.html`。
+
+## 生命周期：谁负责清什么
+
+「卸载即无痕」是平台承诺，但需要应用履行自己的那一半义务：
+
+| 阶段 | 平台自动完成 | 应用义务 |
+|---|---|---|
+| 安装 | 文件落盘 `market-apps/<name>/`、app_control 登记、后端热挂载、广播 | — |
+| 启用/停用 | app_control 即时生效、前端路由与悬浮层同步摘挂 | — |
+| 更新 | 重装最新版（保留启用状态与本地数据） | — |
+| 卸载 | 执行 cleanup.js → 删 app_control/app_config → 删目录 → 前端卸载 script/style/DOM | cleanup.js 清干净自建表与 kv；onDestroy 退订全部 realtime/eventBus |
+| 卸载（客户端） | 清 `ci:app:<name>:*` localStorage、SDK 登记表、模块注册表、路由墓碑 | 存储只经 `context.data.storage`（前缀强制，才能被清到） |
+
+cleanup.js 钩子契约（卸载时、删目录前执行，**失败会中止卸载**保留现场）见
+[第三方应用开发 § 卸载清理钩子](./third-party#生命周期与回收契约)。
+
+发布前可用生命周期探针完整回归一遍：
+
+```bash
+node scripts/market-lifecycle-probe.mjs   # 需本地服务器运行中（默认 http://127.0.0.1:9001）
+```
+
+探针用一次性应用完整走「安装 → 使用 → 卸载 → 重装 → 再卸载」，逐项断言数据库表、app_control、目录、API 全部无残留。
+
+## 发布到市场源
+
+市场源是一个 Git 仓库（Gitee 默认 / GitHub / 本地目录），根目录 `index.json` 列出全部包：
+
+```json
+{ "version": 1, "apps": [ { "name": "my-app", "label": "示例", "version": "1.0.0",
+  "files": ["apps/my-app/manifest.json", "apps/my-app/frontend/entry.js"] } ] }
+```
+
+在**市场源仓库根目录**完成三步：
+
+```bash
+node scripts/market-index-gen.mjs          # 1. 生成 index.json（files 清单 + 逐文件 sha256）
+node scripts/market-sign.mjs --genkey      # 2.（首次）生成 ed25519 发布密钥对
+node scripts/market-sign.mjs               # 3. 每次发布：对 index.json 签名 → index.json.sig
+
+# 发布：把 apps/<name>/（或 themes/<id>/、plugins/<name>/）+ index.json + index.json.sig 推到市场仓库
+```
+
+说明：
+
+- `market-index-gen.mjs` 扫描市场源的 `apps/` / `plugins/` / `themes/` 三段并合并回 index.json，`files` 清单不再手工维护；`screenshots` / `changelog` 等运营字段原样保留。`--check` 可只校验不写入
+- 本地源目录默认 `<项目根>/../market`，可用 `MARKET_LOCAL_DIR` 覆盖；班级服务器装好后即从市场源拉取安装
+
+### 完整性链路（防篡改）
+
+两层保护，发布者按需启用：
+
+1. **逐文件哈希**：`market-index-gen.mjs` 自动在 index.json 每个条目写入 `hashes`（sha256），安装时服务端逐文件比对，不匹配即中止——防镜像损坏与半更新，**零配置默认生效**。
+2. **目录签名**（可选启用）：`market-sign.mjs` 用 ed25519 私钥对 index.json 原始字节签名；部署端配置 `MARKET_SIGNING_PUBLIC_KEY`（PEM 文本或文件路径）后，http 源（gitee/github）的目录必须验签通过才可用（篡改/缺签 → 拉取失败并在市场页显示明确错误），本地源按文件系统信任跳过。市场页目录区显示「已验签 / 未验签 / 本地源」徽章。
+
+::: warning 密钥纪律
+私钥（`server/.market-signing-key.pem`）**绝不入仓、不入市场仓库**；轮换密钥时先发新公钥到部署端、再用新私钥重签目录。
+:::
+
+## 市场主题包
+
+市场里除应用与插件外，还有一类**纯数据 JSON 包**——主题。没有任何脚本执行（CSP 友好），安装后出现在全班成员的主题选择里：
+
+```text
+themes/<id>/
+  manifest.json   # { id, name, type: 'light'|'dark', version, description, author, tokens: './tokens.json' }
+  tokens.json     # TOKENS 数据对象（与内置主题导出结构同构）
+  icon.svg        # 可选
+```
+
+硬性约束：
+
+- `id` 必须与目录名一致，且不能是 `light`/`dark`（内置主题不可覆盖）
+- `tokens` 必须指向 `./tokens.json`（纯 JSON；市场主题不支持 .js）
+- 安装时服务端原子写入 `market-themes/<id>/` 并合成 `pack.json`，客户端一次取全注册；卸载时正在使用的用户自动回退浅色
+
+脚手架：`node scripts/create.mjs theme <id> --type light|dark`（生成基于内置主题的完整 tokens 副本，改 color 组值即可生效）。令牌体系见 [主题开发](./themes)。
 
 ## 五子棋示例
 

@@ -61,8 +61,11 @@ export default defineConfig({
         text: '开发指南',
         items: [
           { text: '简介', link: '/development/' },
+          { text: '第一个应用：从零到上架', link: '/development/first-app' },
           { text: '第三方应用开发', link: '/development/third-party' },
           { text: '市场应用生命周期', link: '/development/market-apps' },
+          { text: '应用包格式开放规范', link: '/development/package-spec' },
+          { text: '存量项目迁入指南', link: '/development/migration' },
           { text: '小组件开发', link: '/development/widgets' },
           { text: '插件开发', link: '/development/plugins' },
           { text: '主题开发', link: '/development/themes' },
@@ -82,6 +85,7 @@ export default defineConfig({
         text: '部署运维',
         items: [
           { text: '简介', link: '/deployment/' },
+          { text: '10 分钟部署上线（保姆级）', link: '/deployment/beginner' },
           { text: '生产部署', link: '/deployment/production' },
           { text: '教育场景', link: '/deployment/education' },
           { text: '配置项', link: '/deployment/configuration' },
@@ -130,8 +134,11 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: '简介', link: '/development/' },
+          { text: '第一个应用：从零到上架', link: '/development/first-app' },
           { text: '第三方应用开发', link: '/development/third-party' },
           { text: '市场应用生命周期', link: '/development/market-apps' },
+          { text: '应用包格式开放规范', link: '/development/package-spec' },
+          { text: '存量项目迁入指南', link: '/development/migration' },
           { text: '小组件开发', link: '/development/widgets' },
           { text: '插件开发', link: '/development/plugins' },
           { text: '主题开发', link: '/development/themes' },
@@ -152,6 +159,7 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: '简介', link: '/deployment/' },
+          { text: '10 分钟部署上线（保姆级）', link: '/deployment/beginner' },
           { text: '生产部署', link: '/deployment/production' },
           { text: '教育场景', link: '/deployment/education' },
           { text: '配置项', link: '/deployment/configuration' },
