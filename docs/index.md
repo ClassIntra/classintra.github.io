@@ -79,7 +79,9 @@ features:
 | 🧑‍💻 写第一个应用 | 第三方开发者教程：从脚手架到发布上架 | [进入](/development/first-app) |
 | 🚀 快速开始 | 安装、启动、基本使用 | [进入](/quick-start/) |
 | 🧠 核心概念 | 架构、应用、Manifest、主题、WebSocket、认证 | [进入](/concepts/) |
-| 🛠 开发指南 | 第三方应用开发、SDK、CLI、调试 | [进入](/development/) |
+| 🛠 应用开发 | 写应用 / 插件 / 主题 / 小组件，含 SDK 与兼容红线 | [进入](/development/) |
+| 🌐 市场与生态 | 发布上架、包格式规范、与外部系统集成 | [进入](/development/) |
+| ⚙️ 平台开发 | 改 ClassIntra 主仓库本身（内核、CLI、工具链） | [进入](/development/) |
 | 🚢 部署运维 | 生产部署、教育场景、配置项、监控 | [进入](/deployment/) |
 | 📡 API 参考 | 服务端 API、前端 API、类型定义 | [进入](/api/) |
 | 🎨 UI & 主题 | 组件库、主题定制、图标系统 | [进入](/ui/) |

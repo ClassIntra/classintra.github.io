@@ -59,27 +59,39 @@ export default defineConfig({
         ]
       },
       {
-        text: '开发指南',
+        text: '应用开发',
         items: [
           { text: '简介', link: '/development/' },
           { text: '第一个应用：从零到上架', link: '/development/first-app' },
           { text: '第三方应用开发', link: '/development/third-party' },
-          { text: '市场应用生命周期', link: '/development/market-apps' },
-          { text: '应用包格式开放规范', link: '/development/package-spec' },
           { text: '存量项目迁入指南', link: '/development/migration' },
           { text: '小组件开发', link: '/development/widgets' },
           { text: '插件开发', link: '/development/plugins' },
           { text: '主题开发', link: '/development/themes' },
           { text: 'SDK 参考', link: '/development/sdk' },
-          { text: 'CLI 工具', link: '/development/cli' },
+          { text: 'Chrome 80 兼容', link: '/development/chrome-80-compat' },
           { text: '调试技巧', link: '/development/debugging' },
+        ]
+      },
+      {
+        text: '市场与生态',
+        items: [
+          { text: '市场应用生命周期', link: '/development/market-apps' },
+          { text: '应用包格式开放规范', link: '/development/package-spec' },
+          { text: '外部系统集成', link: '/development/integration' },
+          { text: 'AstrBot 机器人接入', link: '/development/astrbot' },
+          { text: 'CampusBili 集成', link: '/development/campusbili-integration' },
+          { text: 'Cluss 集成', link: '/development/cluss-integration' },
           { text: '联机五子棋开发', link: '/development/gomoku-online' },
           { text: '网易云音乐插件', link: '/development/netease-music' },
-          { text: 'AstrBot 机器人接入', link: '/development/astrbot' },
-          { text: '超能岛浏览器兼容模式（web-proxy）', link: '/development/web-proxy' },
-          { text: 'Cluss 集成', link: '/development/cluss-integration' },
-          { text: '外部系统集成', link: '/development/integration' },
-          { text: 'Chrome 80 兼容', link: '/development/chrome-80-compat' },
+        ]
+      },
+      {
+        text: '平台开发',
+        items: [
+          { text: '平台开发概述', link: '/development/index' },
+          { text: 'CLI 工具', link: '/development/cli' },
+          { text: 'web-proxy 兼容模式', link: '/development/web-proxy' },
         ]
       },
       {
@@ -132,28 +144,42 @@ export default defineConfig({
         ]
       },
       {
-        text: '开发指南',
+        text: '应用开发',
         collapsed: false,
         items: [
           { text: '简介', link: '/development/' },
           { text: '第一个应用：从零到上架', link: '/development/first-app' },
           { text: '第三方应用开发', link: '/development/third-party' },
-          { text: '市场应用生命周期', link: '/development/market-apps' },
-          { text: '应用包格式开放规范', link: '/development/package-spec' },
           { text: '存量项目迁入指南', link: '/development/migration' },
           { text: '小组件开发', link: '/development/widgets' },
           { text: '插件开发', link: '/development/plugins' },
           { text: '主题开发', link: '/development/themes' },
           { text: 'SDK 参考', link: '/development/sdk' },
-          { text: 'CLI 工具', link: '/development/cli' },
+          { text: 'Chrome 80 兼容', link: '/development/chrome-80-compat' },
           { text: '调试技巧', link: '/development/debugging' },
+        ]
+      },
+      {
+        text: '市场与生态',
+        collapsed: false,
+        items: [
+          { text: '市场应用生命周期', link: '/development/market-apps' },
+          { text: '应用包格式开放规范', link: '/development/package-spec' },
+          { text: '外部系统集成', link: '/development/integration' },
+          { text: 'AstrBot 机器人接入', link: '/development/astrbot' },
+          { text: 'CampusBili 集成', link: '/development/campusbili-integration' },
+          { text: 'Cluss 集成', link: '/development/cluss-integration' },
           { text: '联机五子棋开发', link: '/development/gomoku-online' },
           { text: '网易云音乐插件', link: '/development/netease-music' },
-          { text: 'AstrBot 机器人接入', link: '/development/astrbot' },
-          { text: '超能岛浏览器兼容模式（web-proxy）', link: '/development/web-proxy' },
-          { text: 'Cluss 集成', link: '/development/cluss-integration' },
-          { text: '外部系统集成', link: '/development/integration' },
-          { text: 'Chrome 80 兼容', link: '/development/chrome-80-compat' },
+        ]
+      },
+      {
+        text: '平台开发',
+        collapsed: false,
+        items: [
+          { text: '平台开发概述', link: '/development/index' },
+          { text: 'CLI 工具', link: '/development/cli' },
+          { text: 'web-proxy 兼容模式', link: '/development/web-proxy' },
         ]
       },
       {

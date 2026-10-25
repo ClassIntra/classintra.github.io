@@ -1,16 +1,59 @@
 ---
 title: 开发指南
-description: ClassIntra 开发指南概览，覆盖开发环境要求、项目结构、开发工作流、代码风格约定（Chrome 80 兼容、var/function、Options API）与提交规范。
+description: ClassIntra 开发文档总入口。按受众分三组：应用开发（写第三方应用/插件/主题/小组件）、市场与生态（发布上架与对外集成）、平台开发（改主仓库本身）。本页同时是平台开发概述，含开发环境、项目结构、工作流与代码风格。
 ---
 
 # 开发指南
 
-::: tip 第一次写 ClassIntra 应用？
-直接看 [第一个应用：从零到上架](/development/first-app)——30 分钟从装环境走到班级服务器上装上。
-本页讲的是**主仓库本身的开发**（改内核、写官方应用），第三方开发者可以跳过。
-:::
+ClassIntra 的开发文档按**你要做什么**分成三组，先对号入座，再往下读。
 
-本页面是 ClassIntra 开发者文档的入口，介绍项目结构、开发环境、工作流与代码风格约定。如果你是首次接触 ClassIntra，建议从 [核心概念 - 架构概览](/concepts/) 开始。
+## 应用开发 —— 写应用、插件、主题、小组件
+
+给 ClassIntra **写东西**的人。不需要改主仓库，产物通常以市场包分发。
+
+| 页面 | 什么时候看 |
+|---|---|
+| [第一个应用：从零到上架](/development/first-app) | **第一次写应用，从这篇开始** —— 30 分钟走完脚手架到发布 |
+| [第三方应用开发](/development/third-party) | 主线参考：三种形态、manifest、entry/overlay/widgets 契约 |
+| [存量项目迁入指南](/development/migration) | 手上已有项目，想搬进 ClassIntra |
+| [小组件开发](/development/widgets) | 做桌面网格里的信息卡片 |
+| [插件开发](/development/plugins) | 只做后端、没有页面的扩展 |
+| [主题开发](/development/themes) | 做主题包（纯数据 JSON） |
+| [SDK 参考](/development/sdk) | 查 `context.*` 全部 API 签名 |
+| [Chrome 80 兼容](/development/chrome-80-compat) | 目标设备是老内核平板，必读 |
+| [调试技巧](/development/debugging) | 排查问题 |
+
+## 市场与生态 —— 发布上架、对外集成
+
+应用写完之后怎么发布，以及 ClassIntra **与外部系统**怎么对接。
+
+| 页面 | 什么时候看 |
+|---|---|
+| [市场应用生命周期](/development/market-apps) | 发布到市场源、安装/更新/卸载、完整性签名 |
+| [应用包格式开放规范](/development/package-spec) | 包格式契约全文（给宿主实现者与生态工具作者） |
+| [外部系统集成](/development/integration) | postMessage + webhook 双向集成协议 |
+| [AstrBot 机器人接入](/development/astrbot) | 接一个机器人同学进来 |
+| [CampusBili 集成](/development/campusbili-integration) | 内嵌 CampusBili |
+| [Cluss 集成](/development/cluss-integration) | Cluss 旁挂系统的四条集成通道 |
+| [联机五子棋开发](/development/gomoku-online) | 联机类应用的实时事件实践 |
+| [网易云音乐插件](/development/netease-music) | 内网环境下接外部曲库的范例 |
+
+## 平台开发 —— 改 ClassIntra 主仓库本身
+
+贡献内核、改官方应用、动构建与工具链。**只写第三方应用的话，这一组可以跳过。**
+
+| 页面 | 什么时候看 |
+|---|---|
+| 平台开发概述（本页） | 开发环境、项目结构、工作流、代码风格 |
+| [CLI 工具](/development/cli) | pnpm 脚本、PM2、版本管理与迁移工具 |
+| [web-proxy 兼容模式](/development/web-proxy) | 超能岛浏览器的服务端无头渲染插件 |
+
+---
+
+# 平台开发概述
+
+以下内容面向**改主仓库**的开发者：介绍项目结构、开发环境、工作流与代码风格约定。
+首次接触 ClassIntra 建议先看 [核心概念 - 架构概览](/concepts/)。
 
 ## 开发环境要求
 
