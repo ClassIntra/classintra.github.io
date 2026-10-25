@@ -120,8 +120,8 @@ curl http://localhost:9001/api/system/heartbeat
   "code": 200,
   "data": {
     "status": "running",
-    "version": "1.5.0",
-    "minClientVersion": "1.5.0",
+    "version": "1.6.0",
+    "minClientVersion": "1.6.0",
     "forceUpdate": false,
     "action": "none",
     "timestamp": 1692604200000
@@ -141,10 +141,10 @@ curl http://localhost:9001/api/system/version
 {
   "code": 200,
   "data": {
-    "version": "1.5.0",
+    "version": "1.6.0",
     "buildHash": "l1a2b3c4d5e6f7g8",
     "buildTime": "2025-08-21T08:00:00.000Z",
-    "minClientVersion": "1.5.0",
+    "minClientVersion": "1.6.0",
     "changelog": "fix: 修复聊天断线重连",
     "forceUpdate": false,
     "updateUrl": "",

@@ -245,4 +245,4 @@ curl http://localhost:9001/api/astrbot/status
 
 - **群聊 @触发、语音输入**暂未实现（私聊优先）。
 - ClassIntra 私聊 WS 限流 **30 条/分钟**（服务端约束），机器人回复计入同一额度——这也是 `AB_MAX_SEGMENTS` 存在的理由。
-- `AB_ASYNC_ENABLED` 异步模式当前未启用（同机部署无隧道需求，同步即可）。
+- `AB_ASYNC_ENABLED` 异步模式**已弃用**（早期草案，从未投入生产，同机部署无隧道需求，同步即可）。

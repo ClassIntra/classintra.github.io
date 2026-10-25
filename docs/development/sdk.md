@@ -36,7 +36,7 @@ window.ClassIntraMarket.define({
 
 ```typescript
 // 方式一：类型导入（推荐）
-import type { MarketContext } from '../../plugins/_sdk/sdk';
+import type { MarketContext } from '../../plugins/_sdk/sdk.d.ts';
 ```
 
 ```json

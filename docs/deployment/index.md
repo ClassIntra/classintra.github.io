@@ -73,7 +73,7 @@ ClassIntra 默认占用以下端口，部署前请确认未被占用：
 | **9443** | HTTPS | HTTPS 服务（PM2 `classintra-https` 镜像实例） | `HTTPS_PORT` | 9443 |
 | **10001** | WebSocket | 实时通讯（聊天、桌面、超能岛） | `WS_PORT` | 10001 |
 | **10011** | TCP | 跨机 Relay 中继 | `RELAY_PORT` | 10011 |
-| **5001** | HTTP | Vite Dev Server（仅开发模式） | `vite.config.mjs` | 5001 |
+| **20001** | HTTP | Vite Dev Server（仅开发模式） | `vite.config.mjs` | 20001 |
 | **8384** | HTTP | Syncthing API（可选，文件同步） | `SYNCTHING_PORT` | 8384 |
 
 ::: tip 端口冲突排查

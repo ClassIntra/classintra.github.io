@@ -13,12 +13,12 @@ ClassIntra 启动后，通过浏览器访问：
 
 | 模式 | 访问地址 | 说明 |
 |------|---------|------|
-| 开发模式 | <http://localhost:5001> | Vite dev server，自动代理 API 到 :9001 |
+| 开发模式 | <http://localhost:20001> | Vite dev server，自动代理 API 到 :9001 |
 | 生产模式 | <http://localhost:9001> | Express 直接服务静态文件 + API |
-| 首次配置 | <http://localhost:5001/setup>（或 :9001/setup） | 班级初始化向导 |
+| 首次配置 | <http://localhost:20001/setup>（或 :9001/setup） | 班级初始化向导 |
 
 ::: tip 端口说明
-- `5001` —— Vite dev server（仅开发模式）
+- `20001` —— Vite dev server（仅开发模式）
 - `9001` —— Express HTTP（开发 + 生产，REST API + 静态文件）
 - `10001` —— WebSocket（本地聊天实时通信）
 - `10011` —— Relay WebSocket（跨班级消息中继）
@@ -30,7 +30,7 @@ ClassIntra 启动后，通过浏览器访问：
 
 ### 1. 访问 setup 页面
 
-浏览器打开 <http://localhost:5001/setup>（生产模式为 <http://localhost:9001/setup>）。
+浏览器打开 <http://localhost:20001/setup>（生产模式为 <http://localhost:9001/setup>）。
 
 ### 2. 导入预注册名单
 
@@ -123,7 +123,7 @@ ClassIntra 启动后，通过浏览器访问：
 在「设置」应用中可自定义壁纸：
 
 - 支持纯色、渐变、图片壁纸
-- 壁纸文件存放于 `Resources/public/wallpapers/`
+- 壁纸文件存放于 `Resources/public/wallpaper/`（注意目录名为单数）
 - 支持自定义上传
 
 ### 锁屏

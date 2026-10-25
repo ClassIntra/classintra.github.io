@@ -152,7 +152,7 @@ cp server/.env.example server/.env
 pnpm dev
 ```
 
-启动后访问 <http://localhost:5001>，首次使用请访问 `/setup` 完成班级初始化。
+启动后访问 <http://localhost:20001>，首次使用请访问 `/setup` 完成班级初始化。
 
 ::: tip 完整指南
 详细安装步骤、环境变量、首次配置、常见问题请参考 [安装指南](/quick-start/installation)。

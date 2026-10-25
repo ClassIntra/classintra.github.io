@@ -231,7 +231,7 @@ pnpm dev
 此命令（`pnpm --parallel --filter server --filter client run dev`）会并行启动：
 
 - **后端 server**（端口 9001）：`node src/app.js`，提供 REST API + WebSocket
-- **前端 client**（端口 5001）：`vite` dev server，提供 HMR 热重载
+- **前端 client**（端口 20001）：`vite` dev server，提供 HMR 热重载
 
 Vite dev server 已配置代理，`/api` 与 `/ws` 请求会自动转发到 `http://localhost:9001`，无需额外 CORS 处理。
 
@@ -241,12 +241,12 @@ Vite dev server 已配置代理，`/api` 与 `/ws` 请求会自动转发到 `htt
 ClassIntra server listening on http://localhost:9001
 WebSocket server listening on ws://localhost:10001
 VITE v5.x  ready in xxx ms
-➜  Local:   http://localhost:5001/
+➜  Local:   http://localhost:20001/
 ```
 
 ::: tip 单独启动
 - 仅后端：`pnpm dev:server`（端口 9001）
-- 仅前端：`pnpm dev:client`（端口 5001，需后端已启动）
+- 仅前端：`pnpm dev:client`（端口 20001，需后端已启动）
 :::
 
 ::: tip Windows 一键启动
@@ -257,7 +257,7 @@ VITE v5.x  ready in xxx ms
 
 ## 首次配置
 
-启动成功后，访问 <http://localhost:5001/setup>（或生产模式 <http://localhost:9001/setup>）完成班级初始化向导，五步完成配置：
+启动成功后，访问 <http://localhost:20001/setup>（或生产模式 <http://localhost:9001/setup>）完成班级初始化向导，五步完成配置：
 
 ```
 ① 届数        → 设置毕业年份后两位（如 25 = 2025 届）
@@ -334,7 +334,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 **可能原因**：
 1. 后端 server 未启动 —— 启动 server 后刷新页面
 2. 浏览器版本过低 —— 升级 Chrome / Firefox 至推荐版本
-3. 端口被占用 —— 检查 5001 / 9001 端口
+3. 端口被占用 —— 检查 20001 / 9001 端口
 
 ### Q4：WebSocket 连接失败
 

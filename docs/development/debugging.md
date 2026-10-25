@@ -277,7 +277,7 @@ wscat -c "ws://localhost:10001?token=<your-jwt>"
 #### Node.js 脚本
 
 ```javascript
-// scripts/debug-ws.js
+// 保存为 scripts/debug-ws.js（仓库内无现成文件，需自行创建）
 var WebSocket = require('ws');
 
 var token = '<your-jwt>';
@@ -374,7 +374,7 @@ sqlite3 server/database/classintra.db "PRAGMA wal_checkpoint(PASSIVE);"
 ### Node.js 脚本调试
 
 ```javascript
-// scripts/debug-db.js
+// 保存为 scripts/debug-db.js（仓库内无现成文件，需自行创建）
 var Database = require('better-sqlite3');
 var db = new Database('./server/database/classintra.db', { readonly: true });
 
@@ -451,7 +451,7 @@ sqlite3 server/database/classintra.db "PRAGMA wal_checkpoint(TRUNCATE);"
 
 ```bash
 # 命令行
-npx lighthouse http://localhost:5001 --view
+npx lighthouse http://localhost:20001 --view
 
 # 或在 Chrome DevTools 中
 # F12 → Lighthouse → Generate report

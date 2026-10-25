@@ -345,7 +345,7 @@ ClassIntra 聊天 WebSocket 连接地址为 `ws(s)://<host>:10001/?token=<JWT>`�
 | `private_message` | `id`、`sender_id`、`sender_name`、`content`、`type`、`created_at` | 私聊消息推送 |
 | `group_message` | `id`、`group_id`、`sender_id`、`sender_name`、`content`、`type`、`created_at` | 群聊消息推送 |
 | `recalled` | `message_id`、`channel` | 消息撤回通知 |
-| `notification` | `title`、`body`、`type`、`source` | 通知推送 |
+| `super_island_notification` | `title`、`body`、`type`、`source` | 超能岛系统通知推送 |
 | `broadcast` | `content`、`priority` | 广播通知 |
 | `user_login` | `user_id`、`last_login` | 用户上线通知 |
 | `error` | `message` | 错误消息 |
@@ -387,9 +387,6 @@ ClassIntra 服务端通过 `dotenv` 读取环境变量，主要变量如下：
 | `JWT_SECRET` | `string` | 否 | — | HS256 共享密钥，仅过渡期验签尚未刷新的旧 Token（兜底） |
 | `JWT_EXPIRES_IN` | `string` | 否 | `7d` | Token 有效期 |
 | `DB_PATH` | `string` | 否 | `./database/classintra.db` | SQLite 数据库文件路径（server 相对路径） |
-| `PUBLIC_DIR` | `string` | 否 | `public` | 静态资源目录 |
-| `CORS_ORIGIN` | `string` | 否 | `*` | CORS 白名单（逗号分隔） |
-| `CDN_WHITELIST` | `string` | 否 | — | CDN 代理域名白名单（逗号分隔） |
 | `HTTPS` | `boolean` | 否 | `false` | 是否启用 HTTPS |
 | `NODE_ENV` | `string` | 否 | `development` | 运行环境（`production` / `development`） |
 | `ADMIN_USER_IDS` | `string` | 否 | `[]` | 管理员用户 ID 列表（JSON 数组字符串） |

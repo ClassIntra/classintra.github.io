@@ -39,13 +39,13 @@ Linux 用户跳到 [附录：Linux 差异](#附录linux-差异)。
 它不是什么第三方工具，是 ClassIntra 官方仓库的一部分（[ClassIntra-Ops](https://github.com/ClassIntra/ClassIntra-Ops)）。
 
 ::: warning 当前是测试版
-v0.1 测试阶段，配置格式可能变化。**升级前备份 `ClassIntraOps.config.json`**。
+v0.2 测试阶段，配置格式可能变化。**升级前备份 `ClassIntraOps.config.json`**。
 :::
 
 ## 第 A1 步：下载并打开
 
 去 [Releases 页面](https://github.com/ClassIntra/ClassIntra-Ops/releases) 下载
-`ClassIntraOps-v0.1-win-x64.exe`，**双击即用**，不需要安装 .NET、不需要命令行。
+`ClassIntraOps-v0.2-win-x64.exe`，**双击即用**，不需要安装 .NET、不需要命令行。
 
 首次打开会进「欢迎页」。窗口点 ✕ 不会退出（收进托盘），真正退出要走托盘右键菜单。
 
@@ -116,18 +116,25 @@ pm2 save
 需要填的通常只有天气源（`QWEATHER_KEY`）。改完之后**必须点「应用配置重启」**——
 它执行的是 `pm2 restart ecosystem.config.js --update-env`。普通重启不会重新加载环境变量，这是常见的踩坑点。
 
-## 第 A7 步：走初始化向导
+## 第 A7 步：初始化班级（两种做法选一种）
 
-跟方式 B 完全一样：浏览器打开
+**做法一：在控制台里填（推荐）**
 
-```text
+进「**班级初始化**」页，一次填完：届数 → 班级 → 班管 → 导入全班真实姓名名单。
+学号由 CI 自动分配（班管 `YYCC00`、学生 `YYCCnn`），填完**直接就能用，不用再去浏览器打开 `/setup`**。
+
+**做法二：浏览器打开向导**
+
+```
 http://localhost:9001/setup
 ```
 
 四步填完：**届数 → 班级 → 名单（导入全班真实姓名）→ 班管**，看到「配置完成」即成功。
-然后打开 `http://localhost:9001` 用班管的真实姓名注册，自动获得管理员权限。
 
-详细说明见 [方式 B 第 8 步](#第-8-步打开初始化向导)——两边是同一套向导，不重复写。
+两种方式背后是同一套初始化逻辑（Ops 的表单最终也是调 CI 的 `/api/setup/save`），
+所以用哪种都行。然后打开 `http://localhost:9001` 用班管的真实姓名注册，自动获得管理员权限。
+
+详细说明见 [方式 B 第 8 步](#第-8-步打开初始化向导)。
 
 ## 第 A8 步：日常运维就在控制台里
 

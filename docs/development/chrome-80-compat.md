@@ -476,7 +476,7 @@ cd client && npx vite build
 
 ### Vite 构建配置
 
-[client/vite.config.js](https://github.com/ClassIntra/ClassIntra/blob/main/client/vite.config.js) 中应配置 `target: 'chrome80'`：
+[client/vite.config.mjs](https://github.com/ClassIntra/ClassIntra/blob/main/client/vite.config.mjs) 中应配置 `target: 'chrome80'`：
 
 ```javascript
 export default {

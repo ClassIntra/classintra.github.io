@@ -27,8 +27,8 @@ ClassIntra 使用 pnpm workspace 管理 monorepo，根目录 `package.json` 中�
 | Workspace | 命令 | 说明 |
 |-----------|------|------|
 | `server` | `pnpm dev` / `pnpm start` | `node src/app.js`（同义） |
-| `client` | `pnpm dev` | `vite` dev server，端口 5001 |
-| `client` | `pnpm prebuild` | `node scripts/prebuild.js`（版本号递增） |
+| `client` | `pnpm dev` | `vite` dev server，端口 20001 |
+| `client` | `pnpm prebuild` | `node client/scripts/prebuild.js`（版本号管理已移交 `scripts/version.js`，本脚本不递增版本号） |
 | `client` | `pnpm build` | `vite build`（构建产物到 `dist/`） |
 | `client` | `pnpm preview` | `vite preview`（预览构建产物） |
 
@@ -42,7 +42,7 @@ cp server/.env.example server/.env
 
 # 2. 开发
 pnpm dev
-# → 前端 http://localhost:5001
+# → 前端 http://localhost:20001
 # → 后端 http://localhost:9001
 # → WebSocket ws://localhost:10001
 
@@ -172,7 +172,7 @@ build.bat
 
 1. 初始化数据库（`node src/utils/init-db.js`）
 2. 后台启动后端（`node src/app.js`，端口 9001）
-3. 后台启动前端（`npx vite --host`，端口 5001）
+3. 后台启动前端（`npx vite --host`，端口 20001）
 4. `Ctrl+C` 优雅停止两个进程
 
 ::: warning start.sh 仅开发
@@ -283,8 +283,8 @@ ClassIntra 使用 `server/version.json` 管理版本，由 `client/scripts/prebu
 
 ```json
 {
-  "version": "1.5.0",
-  "lastBuiltVersion": "1.4.1",
+  "version": "1.6.0",
+  "lastBuiltVersion": "1.5.0",
   "buildHash": "l1a2b3c4d5e6f7g8",
   "buildTime": "2025-08-21T08:00:00.000Z",
   "changelog": "fix: 修复 WebSocket 断线重连\nfeat: 添加主题切换快捷键",
@@ -347,10 +347,10 @@ curl -X POST http://localhost:9001/api/system/set-version \
   -H "Authorization: Bearer <admin-jwt>" \
   -H "Content-Type: application/json" \
   -d '{
-    "version": "1.5.0",
+    "version": "1.6.0",
     "forceUpdate": true,
     "changelog": "紧急修复：修复 JWT 泄露漏洞，请立即更新",
-    "minClientVersion": "1.5.0"
+    "minClientVersion": "1.6.0"
   }'
 ```
 
@@ -652,8 +652,7 @@ pm2 restart classintra-server
 ### 数据库备份脚本
 
 ```bash
-#!/bin/bash
-# backup-db.sh
+# 备份（可自行保存为 scripts/backup-db.sh）
 set -e
 cd /opt/ClassIntra
 
@@ -662,6 +661,12 @@ BACKUP_DIR=/backup/classintra
 mkdir -p $BACKUP_DIR
 
 # 在线备份（无需停服）
+cp server/database/classintra.db "$BACKUP_DIR/classintra-$DATE.db"
+cp server/.env "$BACKUP_DIR/env-$DATE"
+echo "备份完成: $BACKUP_DIR"
+```
+
+**注意**：仓库内不提供现成的 `backup-db.sh`，以上为可直接保存使用的示例脚本，请按实际部署路径调整。
 sqlite3 server/database/classintra.db ".backup '$BACKUP_DIR/classintra-$DATE.db'"
 
 # 保留最近 30 天

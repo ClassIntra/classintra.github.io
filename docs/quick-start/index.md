@@ -128,7 +128,7 @@ cp server/.env.example server/.env
 pnpm dev
 ```
 
-此命令会并行启动后端 server（端口 9001）与前端 Vite dev server（端口 5001），Vite 已配置代理，`/api` 与 `/ws` 请求自动转发到 `http://localhost:9001`。
+此命令会并行启动后端 server（端口 9001）与前端 Vite dev server（端口 20001），Vite 已配置代理，`/api` 与 `/ws` 请求自动转发到 `http://localhost:9001`。
 
 ::: tip Windows 一键启动
 Windows 用户也可使用 `start.bat`（开发）或 `start-prod.bat`（生产）一键启动，`cn.bat` 提供 PM2 进程管理。
@@ -138,9 +138,9 @@ Windows 用户也可使用 `start.bat`（开发）或 `start-prod.bat`（生产�
 
 启动成功后访问：
 
-- **开发模式**：<http://localhost:5001>（Vite dev server，自动代理到后端）
+- **开发模式**：<http://localhost:20001>（Vite dev server，自动代理到后端）
 - **后端 API**：<http://localhost:9001>（Express HTTP + WebSocket）
-- **首次配置**：<http://localhost:5001/setup>（班级初始化向导）
+- **首次配置**：<http://localhost:20001/setup>（班级初始化向导）
 
 ::: tip 首次使用
 首次启动必须访问 `/setup` 完成班级初始化：设置届数、班级、导入预注册名单、指定班管。详见 [基本使用](/quick-start/basic-usage)。

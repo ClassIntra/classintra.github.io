@@ -138,11 +138,7 @@ COHORT=25
 
 ### 兼容模式（web-proxy 插件）
 
-web-proxy 插件（静态反代 9101 + 老内核兼容渲染）随主程序自动启动：
-
-| 变量 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `WEB_PROXY_AUTOSTART` | number | `1` | 是否随主程序自动启动，设 `0` 关闭 |
+web-proxy 插件（静态反代 9101 + 老内核兼容渲染）随主程序自动启动。自动启动开关在 `ecosystem.config.js` 中硬编码（默认 `'0'`，即关闭），也可通过插件自身配置在 `plugins/web-proxy/backend/routes.js:31` 中设默认值 `'1'`；如需关闭自启，在 `ecosystem.config.js` 中按需调整即可。
 
 ### 云盘 bot 转运（Cluss 集成）
 

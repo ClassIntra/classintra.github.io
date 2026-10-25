@@ -240,8 +240,8 @@ ThemeEngine 会响应 `prefers-reduced-motion: reduce` 媒体查询，自动禁�
 异步加载远程主题包 JSON 并注册。
 
 ```javascript
-engine.loadExternalTheme('/themes/custom-theme.json').then(function() {
-  engine.setTheme('custom-theme');
+engine.loadExternalTheme('/themes/ocean/tokens.json').then(function() {
+  engine.setTheme('ocean');
 });
 ```
 
@@ -641,7 +641,7 @@ unsubscribe();
 - `connected`：连接成功（含服务器返回的初始化数据）
 - `pong`：心跳响应
 - `chat`：聊天消息
-- `notification`：通知推送
+- `super_island_notification`：超能岛系统通知推送
 - `_connectionStateChange`：连接状态变化（`connected`/`disconnected`/`reconnecting`）
 - `_wsOpen` / `_wsTimeout`：底层 WS 事件
 :::
@@ -672,7 +672,7 @@ wsManager.on('chat', function(data) {
   store.commit('chat/ADD_MESSAGE', data);
 });
 
-wsManager.on('notification', function(data) {
+wsManager.on('super_island_notification', function(data) {
   store.dispatch('toast/showToast', { message: data.title, type: 'info' });
 });
 

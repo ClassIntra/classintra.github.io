@@ -216,7 +216,7 @@ git checkout -b feature/my-feature
 # 3. 启动开发服务器
 pnpm dev
 # 后端 → http://localhost:9001
-# 前端 → http://localhost:5001
+# 前端 → http://localhost:20001
 
 # 4. 编码、调试、自测
 

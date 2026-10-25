@@ -10,7 +10,7 @@ ClassIntra 的主题系统基于 **CSS 变量 + 结构化 Token**，分两类：
 - **内置主题**：`themes/` 目录下的 `light` / `dark`，启动时加载，缺一不可
 - **扩展主题**：`theme-extensions/` 目录下的独立安装包（如 Material You），按需加载，支持动态色彩
 
-源码位置：`client/src/core/theme-loader.js`、`client/src/core/theme-extension-loader.js`、`client/src/core/ThemeEngine.js`、`shared/src/theme-extension-schema.js`
+源码位置：`client/src/core/theme-loader.js`、`client/src/core/theme-extension-loader.js`、`client/src/core/theme-engine.js`、`shared/src/theme-extension-schema.js`
 
 ## 工作原理
 

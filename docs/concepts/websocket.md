@@ -121,7 +121,7 @@ ClassIntra WebSocket 消息分为以下类型，均通过 `data.type` 字段区�
 | 心跳 | `ping` / `pong` | 双向 | 保活探测 |
 | 扩展事件上行 | `realtime_publish` | 客户端 → 服务端 | 第三方扩展发布实时事件 |
 | 扩展事件下行 | `extension_event` | 服务端 → 客户端 | 第三方实时事件推送给在线用户 |
-| 系统通知 | `system_notification` | 服务端 → 客户端 | 封禁、应用更新、权限变更、天气预警 |
+| 系统通知 | `broadcast` | 服务端 → 客户端 | 管理员全局广播、应用更新、系统预警 |
 | 广播 | `broadcast` | 服务端 → 客户端 | 管理员全局广播 |
 
 ### public（公共聊天）

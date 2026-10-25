@@ -33,18 +33,18 @@ ClassIntra 服务端由 Express 4 实现，对外暴露 HTTP 接口，覆盖认�
 | 项目 | 值 |
 | --- | --- |
 | Base URL | `http://localhost:<port>` |
-| 默认端口 | `9001`（后端 HTTP，占用自动顺延；前端开发服务器默认 `5001`） |
+| 默认端口 | `9001`（后端 HTTP，占用自动顺延；前端开发服务器默认 `20001`） |
 | 默认 Content-Type | `application/json`（除文件上传/下载、CDN 代理等明确说明外） |
-| CORS | 默认开启，允许 `Origin: *`；生产环境通过 `CORS_ORIGIN` 配置白名单 |
+| CORS | 默认开启，允许 `Origin: *`；生产环境通过 `CORS_ORIGINS` 配置白名单 |
 | 允许方法 | `GET` / `POST` / `PUT` / `PATCH` / `DELETE` / `OPTIONS` |
-| 允许请求头 | `Content-Type`、`Authorization`、`Cookie`、`X-Relay-Secret`、`X-Webhook-Token` |
+| 允许请求头 | `Content-Type`、`Authorization`、`Cookie`、`X-Relay-Secret`、`X-ClassIntra-Token` |
 | 暴露响应头 | `X-RateLimit-Limit`、`X-RateLimit-Remaining`、`Retry-After` |
 | Cookie | `token`（httpOnly，`sameSite: 'lax'`，有效期 7 天） |
 
 ::: tip 端口与目录
-- 前端开发服务器默认端口 `5001`，后端 API 默认端口 `9001`（`PORT` 可覆盖，占用自动顺延），生产部署时通过 `server/.env` 配置。
+- 前端开发服务器默认端口 `20001`，后端 API 默认端口 `9001`（`PORT` 可覆盖，占用自动顺延），生产部署时通过 `server/.env` 配置。
 - 数据库文件路径由 `DB_PATH` 控制，默认 `./database/classintra.db`（server 相对路径，better-sqlite3 嵌入式数据库）。
-- 静态资源目录由 `PUBLIC_DIR` 控制，默认 `server/public`。
+- 静态资源由 `assets.js` 路由下发，默认目录 `server/public`（图标、壁纸、xgplayer 等）。
 :::
 
 ## 认证机制
@@ -238,9 +238,9 @@ ClassIntra 采用"白名单注册"策略：管理员需先在 `pre_records` 表�
 | --- | --- | --- | --- |
 | GET | `/api/user/profile` | 获取当前用户资料 | 是 |
 | PATCH | `/api/user/profile` | 更新资料（net_name / info 子字段） | 是 |
-| PUT | `/api/user/change-password` | 修改密码 | 是 |
+| POST | `/api/user/change-password` | 修改密码 | 是 |
 | GET | `/api/user/settings` | 获取用户设置（主题、壁纸、通知） | 是 |
-| PUT | `/api/user/settings` | 更新用户设置 | 是 |
+| POST | `/api/user/settings` | 更新用户设置 | 是 |
 
 **PATCH /api/user/profile 请求体**：
 
@@ -317,14 +317,19 @@ ClassIntra 采用"白名单注册"策略：管理员需先在 `pre_records` 表�
   "code": 200,
   "message": "ok",
   "data": {
-    "initialized": false,
-    "admin_count": 0
+    "hasPreRecords": true,
+    "hasEnv": false,
+    "cohorts": ["25"],
+    "classes": ["08"],
+    "preRecordCounts": {...},
+    "dbUserCount": 0,
+    "isFirstRun": true
   }
 }
 ```
 
 ::: warning 一次性端点
-`POST /api/setup/save` 仅在系统未初始化（`initialized === false`）时可用，初始化完成后该端点会返回 `403`。建议在生产部署后立即通过 nginx 屏蔽 `/api/setup/*` 路径。
+`POST /api/setup/save` 仅在系统未初始化时可用，初始化完成后再调用会被鉴权中间件拒绝（需要 `auth + requireAdmin`），并不会返回 `403`。建议在生产部署后立即通过 Nginx 屏蔽 `/api/setup/*` 路径。
 :::
 
 ## 资源 API（/api/assets）
@@ -346,8 +351,8 @@ ClassIntra 采用"白名单注册"策略：管理员需先在 `pre_records` 表�
   "code": 200,
   "message": "ok",
   "data": [
-    { "id": "default", "name": "默认壁纸", "url": "/wallpapers/default.jpg" },
-    { "id": "mountain", "name": "山脉", "url": "/wallpapers/mountain.jpg" }
+    { "id": "default", "name": "默认壁纸", "url": "/resources/public/wallpaper/default.jpg" },
+    { "id": "mountain", "name": "山脉", "url": "/resources/public/wallpaper/mountain.jpg" }
   ]
 }
 ```
@@ -479,7 +484,7 @@ stop();
 | DELETE | `/api/integrations/tokens/:id` | 撤销 Token | 管理员 |
 | POST | `/api/integrations/tokens/:id/regenerate-secret` | 重新生成 secret | 管理员 |
 | GET | `/api/integrations/origins` | 获取 Origin 白名单 | 是 |
-| POST | `/api/integrations/webhook` | 接收外部 Webhook | `X-Webhook-Token` |
+| POST | `/api/integrations/webhook` | 接收外部 Webhook | `X-ClassIntra-Token` |
 
 **POST /api/integrations/tokens 请求体**：
 
@@ -512,7 +517,7 @@ stop();
 ```
 
 ::: tip Webhook 验证
-`POST /api/integrations/webhook` 通过 `X-Webhook-Token` 头部携带集成 Token 进行认证。Webhook 接收方会校验 Token 有效性、Origin 白名单、scopes 权限，并通过 `webhookReceiver` 派发到对应的处理器。
+`POST /api/integrations/webhook` 通过 `X-ClassIntra-Token` 头部携带集成 Token 进行认证。Webhook 接收方会校验 Token 有效性、Origin 白名单、scopes 权限，并通过 `webhookReceiver` 派发到对应的处理器。
 :::
 
 ## 市场 API（/api/market）
@@ -678,7 +683,7 @@ curl -X POST http://localhost:9001/api/integrations/tokens \
 
 ```bash
 curl -X POST http://localhost:9001/api/integrations/webhook \
-  -H "X-Webhook-Token: ci_xxxxxxxxxxxxxxxx" \
+  -H "X-ClassIntra-Token: ci_xxxxxxxxxxxxxxxx" \
   -H "Content-Type: application/json" \
   -d '{"event":"display.update","data":{"screen":"main"}}'
 ```
