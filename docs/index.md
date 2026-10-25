@@ -88,7 +88,7 @@ features:
 
 ## 宣传片
 
-<iframe src="https://player.bilibili.com/player.html?bvid=BV1EMhG65Eky&page=1&danmaku=0" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true" style="display:block;width:100%;aspect-ratio:16/9;border:0;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.12);"></iframe>
+<iframe src="https://player.bilibili.com/player.html?bvid=BV1EMhG65Eky&page=1&danmaku=0" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true" loading="lazy" style="display:block;width:100%;aspect-ratio:16/9;border:0;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.12);"></iframe>
 
 > 或前往 B 站观看：[【ClassIntra —— 一款简单易用的校园内网 WebOS 平台】](https://www.bilibili.com/video/BV1EMhG65Eky/)
 

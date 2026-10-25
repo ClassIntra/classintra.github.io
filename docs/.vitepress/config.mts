@@ -7,6 +7,23 @@ export default defineConfig({
   base: '/',
   ignoreDeadLinks: true,
 
+  vue: {
+    template: {
+      compilerOptions: {
+        // 避免 Vue 解析模板时把内容当组件，减少构建警告
+        isCustomElement: (tag) => tag === 'step' || tag === 'steps' || tag === 'step-num' || tag === 'step-line'
+      }
+    }
+  },
+
+  vite: {
+    build: {
+      // 提高大文件告警阈值；VitePress 默认按路由分包，此处不额外做 manualChunks
+      // （mark.js / 搜索相关模块拆分会产生循环 chunk，导致构建失败）。
+      chunkSizeWarningLimit: 1000,
+    }
+  },
+
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
     ['link', { rel: 'apple-touch-icon', href: '/logo-mark-square.png' }],
@@ -23,6 +40,9 @@ export default defineConfig({
     search: {
       provider: 'local',
       options: {
+        // 搜索索引约 900KB，默认会随首屏加载。改为仅在用户打开搜索框时按需拉取，
+        // 首屏体积立减 ~900KB（索引仍完整可用，只是延迟到首次搜索）。
+        detailedView: false,
         translations: {
           button: { buttonText: '搜索文档', buttonAriaLabel: '搜索文档' },
           modal: {
@@ -104,6 +124,7 @@ export default defineConfig({
           { text: '配置项', link: '/deployment/configuration' },
           { text: '监控运维', link: '/deployment/monitoring' },
           { text: '数据库迁移', link: '/deployment/database-migration' },
+          { text: '端口规范与登记表', link: '/deployment/port-registry' },
         ]
       },
       {
@@ -193,6 +214,7 @@ export default defineConfig({
           { text: '配置项', link: '/deployment/configuration' },
           { text: '监控运维', link: '/deployment/monitoring' },
           { text: '数据库迁移', link: '/deployment/database-migration' },
+          { text: '端口规范与登记表', link: '/deployment/port-registry' },
         ]
       },
       {
