@@ -55,6 +55,7 @@ export default defineConfig({
           { text: 'WebSocket 通信', link: '/concepts/websocket' },
           { text: '认证与权限', link: '/concepts/auth' },
           { text: '应用管控', link: '/concepts/app-control' },
+          { text: 'WebOS 对标与定位', link: '/concepts/webos-positioning' },
         ]
       },
       {
@@ -127,6 +128,7 @@ export default defineConfig({
           { text: 'WebSocket 通信', link: '/concepts/websocket' },
           { text: '认证与权限', link: '/concepts/auth' },
           { text: '应用管控', link: '/concepts/app-control' },
+          { text: 'WebOS 对标与定位', link: '/concepts/webos-positioning' },
         ]
       },
       {
