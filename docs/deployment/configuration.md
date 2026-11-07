@@ -136,6 +136,25 @@ COHORT=25
 
 ## 插件与集成
 
+### 市场源与安装限制
+
+班级默认从官方 Gitee / GitHub / 本地目录安装市场应用。需要接第三方自建市场时用 `MARKET_SOURCES`：
+
+| 变量 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `MARKET_SOURCES` | string | （空） | 自定义市场源。JSON 数组 `[{"id","label","base"}]`，或简写 `id\|label\|base` 逗号分隔 |
+| `MARKET_LOCAL_DIR` | string | `<项目根>/../market` | 内置 `local` 源指向的目录 |
+| `MARKET_MAX_FILES` | number | `300` | 单应用文件数上限 |
+| `MARKET_MAX_FILE_MB` | number | `60` | 单文件大小上限（MB） |
+| `MARKET_MAX_TOTAL_MB` | number | `80` | 单应用总大小上限（MB） |
+| `MARKET_RESTRICTED_CAPABILITIES` | string | （空） | 逗号分隔的能力名，声明即拒装（如 `device.camera,data.http`） |
+| `MARKET_SIGNING_PUBLIC_KEY` | string | （空） | ed25519 公钥（PEM 文本或文件路径），启用后官方源目录必须验签 |
+
+::: tip 自定义源也能在管理端加
+市场页 →「源」→ 填写 id / 显示名 / `index.json` 所在目录即可，无需改 `.env`。
+环境变量适合部署时固化；管理端添加适合临时接入。内置三源与环境变量源不可在管理端删除。
+:::
+
 ### 兼容模式（web-proxy 插件）
 
 web-proxy 插件（静态反代 9101 + 老内核兼容渲染）随主程序自动启动。自动启动开关在 `ecosystem.config.js` 中硬编码（默认 `'0'`，即关闭），也可通过插件自身配置在 `plugins/web-proxy/backend/routes.js:31` 中设默认值 `'1'`；如需关闭自启，在 `ecosystem.config.js` 中按需调整即可。

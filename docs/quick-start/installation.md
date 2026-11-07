@@ -9,7 +9,7 @@ description: ClassIntra 完整安装指南，包含环境准备、克隆仓库�
 
 ## 环境准备
 
-ClassIntra 采用 pnpm workspace monorepo 架构，前端基于 Vite 5 + Vue 2.7，后端基于 Node.js + Express 4 + better-sqlite3。请确保已安装以下工具：
+ClassIntra 采用 pnpm workspace monorepo 架构，前端基于 Vite 6 + Vue 2.7，后端基于 Node.js + Express 4 + better-sqlite3。请确保已安装以下工具：
 
 ### 依赖清单
 

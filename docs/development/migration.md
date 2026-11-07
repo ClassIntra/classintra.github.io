@@ -114,7 +114,7 @@ server.listen(Number(process.env.PORT || 3000), '127.0.0.1', ...);
 前端壳里 `CI.user()` 或把主站 JWT 从 `Authorization: Bearer <localStorage token>` 传给你的
 服务自行验签（RS256 公钥 / HS256 共享密钥，见 `server/src/utils/jwt.js` 的签发规则）。
 
-**你获得**：进程托管（崩溃指数退避重启 ×5）、`/api/my-svc` 自动反代、停用/卸载自动杀进程树、
+**你获得**：进程托管（崩溃线性退避重启 ×5（3s × 次数））、`/api/my-svc` 自动反代、停用/卸载自动杀进程树、
 端口冲突安装期检测、服务器重启自动拉起。**注意**：反代仅 HTTP（WebSocket 暂不支持，联机类走 HTTP 轮询）。
 
 **继续开发**：改代码 → 管理端「更新」（重装会杀旧进程拉新进程）。开发高频迭代时可直接
@@ -177,7 +177,7 @@ node scripts/market-sign.mjs              # ed25519 签名（部署端验签时�
 
 ### 大型项目
 
-- **文件数/体积上限可调**：默认 300 文件 / 单文件 15MB / 总 80MB，部署端环境变量
+- **文件数/体积上限可调**：默认 300 文件 / 单文件 60MB / 总 80MB，部署端环境变量
   `MARKET_MAX_FILES` / `MARKET_MAX_FILE_MB` / `MARKET_MAX_TOTAL_MB` 按需放宽
 - **monorepo / 前后端拆包**：一个项目可拆成多个市场包（前端站一个、后端插件一个、
   主题一个），各自独立版本与启停——比塞一个巨包更好管理

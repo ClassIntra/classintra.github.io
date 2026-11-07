@@ -417,6 +417,7 @@ CDN 代理仅允许白名单域名（默认包含常见 CDN 如 `cdn.jsdelivr.ne
 | --- | --- | --- | --- |
 | GET | `/api/system/version` | 获取系统版本信息 | 否 |
 | GET | `/api/system/heartbeat` | 心跳检测（前端定时调用） | 否 |
+| GET | `/api/system/relay-status` | 跨机（跨班）连通性诊断：对端可达性 + 最近同步时间 | 管理员 |
 | GET | `/api/system/health` | 健康检查（数据库、内存、运行时长） | 否 |
 | GET | `/api/system/app-control` | 获取启用的应用名列表（含锁屏开关，客户端据此过滤禁用应用） | 是 |
 
@@ -469,7 +470,55 @@ context.realtime.publish('my-app.updated', { id: 1 }, context.appName);
 stop();
 ```
 
+## 应用级存储 API（/api/app-data）
+
+供第三方应用保存**跟账号走**的数据：换设备、重装后登录即可取回。与 `context.data.storage`（本机缓存、卸载即清）互补。
+
+| 方法 | 路径 | 说明 | 认证 |
+|---|---|---|---|
+| GET | `/api/app-data/:app/kv` | 列出键（不含值） | 登录 |
+| GET | `/api/app-data/:app/kv/all` | 一次取回全部键值 | 登录 |
+| GET | `/api/app-data/:app/kv/:key` | 读单个键 | 登录 |
+| PUT | `/api/app-data/:app/kv/:key` | 写单个键，body `{ value }` | 登录 |
+| DELETE | `/api/app-data/:app/kv/:key` | 删除单个键 | 登录 |
+| GET | `/api/app-data/:app/blobs` | 文件列表 | 登录 |
+| PUT | `/api/app-data/:app/blobs/:name` | 上传（原始字节 body，Content-Type 即文件类型） | 登录 |
+| GET | `/api/app-data/:app/blobs/:name` | 下载 | 登录 |
+| DELETE | `/api/app-data/:app/blobs/:name` | 删除文件 | 登录 |
+
+边界与限额：
+
+- 数据按 **(应用, 用户)** 隔离，用户之间互不可见；应用级共享数据只允许应用后端经服务代码写入，HTTP 不开放。
+- 应用必须**已安装且未停用**：停用后连自己的数据也返回 403。
+- 单值 ≤ 64KB，每人每应用 ≤ 500 键；单文件 ≤ 5MB，每人每应用 ≤ 50 个文件。
+- 键名：字母/数字/`_`/`.`/`:`/`-`，1–128 位；文件名：字母/数字/`_`/`.`/`-`/空格，1–80 位。
+- 数据**不随卸载删除**（用户可能重装）；需要彻底清理请在 `backend/cleanup.js` 里调 `ctx.appData.purge()`。
+- 管理端接口：`GET /api/market/app-data-usage?name=` 查看占用；`POST /api/market/app-data-purge` 彻底清除（仅管理员）。
+- 部署端可用 `MARKET_PURGE_APP_DATA_ON_UNINSTALL=1` 让卸载自动清数据。
+
+前端 SDK 封装见 [第三方应用开发 § 云端数据](./../development/third-party#context-提供的能力)。
+
+## 应用权限（/api/app-permissions）
+
+第三方应用的敏感能力采用「声明 + 用时授权」两段式：`manifest.capabilities` 声明（安装页展示），首次调用时由使用者授权（按 应用 × 用户 记录）。
+
+| 方法 | 路径 | 说明 | 认证 |
+| --- | --- | --- | --- |
+| GET | `/api/app-permissions/:app` | 我的授权状态：`sensitive`（该应用声明的敏感能力）+ `granted`（已授） | 登录 |
+| POST | `/api/app-permissions/:app` | 授予/撤销本人：`{ capability, granted }` | 登录 |
+| GET | `/api/app-permissions/admin/:app` | 全班授权汇总（按用户聚合） | 管理员 |
+| POST | `/api/app-permissions/admin/revoke` | 代撤销：`{ name, userId?, capability? }`（都给则精确，只给 name 则清空该应用） | 管理员 |
+
+敏感能力白名单（服务端权威）：`device.camera`、`device.microphone`、`system.notification`、`system.clipboard.read`。
+
+- 应用未在 manifest 声明对应能力 → 400；声明 `system.clipboard` 视为覆盖 `system.clipboard.read`（父能力覆盖）。
+- 应用被停用 → 403（停用状态不接受授权，也不该继续用）。
+- 卸载**不删**授权记录（用户重装后不必再点）；需要清理时由应用在 `cleanup.js` 里处理业务数据。
+
 ## 集成 API（/api/integrations）
+
+**机读契约**：`GET /api/integrations/v1/openapi.json`（免鉴权）返回 OpenAPI 3.0 描述，可直接导入 Postman / Apifox / Insomnia。接口字段以它为准，本文档与它不一致时视为 bug。
+
 
 源码：`server/src/routes/integrations.js`
 
@@ -526,15 +575,117 @@ stop();
 
 | 方法 | 路径 | 说明 | 认证 |
 | --- | --- | --- | --- |
-| GET | `/api/market/catalog` | 市场目录（服务端代理拉取，`?source=` 指定市场源） | 是（自 v1.3.0 起需登录） |
+| GET | `/api/market/sources` | 市场源列表（内置 + 环境变量 + 自定义，含 `builtin` / `base`） | 管理员 |
+| POST | `/api/market/sources` | 添加自定义市场源，body `{ id, label, base }` | 管理员 |
+| DELETE | `/api/market/sources/:id` | 删除自定义源（内置源与环境变量源不可删） | 管理员 |
+| GET | `/api/market/catalog` | 市场目录（服务端代理拉取，`?source=` 指定市场源） | 管理员 |
 | GET | `/api/market/asset` | 目录静态资源代理（应用图标等） | 否 |
 | POST | `/api/market/install` | 安装应用 | 管理员 |
 | POST | `/api/market/uninstall` | 卸载应用 | 管理员 |
 | POST | `/api/market/plugin-toggle` | 启用 / 暂停插件 | 管理员 |
+| POST | `/api/market/app-usage` | 应用打开心跳，body `{ name }` | 是 |
+| POST | `/api/market/app-error` | 前端错误上报，body `{ name, message, stack, url }` | 是 |
+| GET | `/api/market/app-health` | 应用健康度（`?name=` 单个，缺省全部） | 管理员 |
 
+- **鉴权分层**：应用市场本身只对班管可见（`apps/market/manifest.json` 的 `visibleRoles: ["classAdmin"]`），接口层同口径——`/catalog`、`/sources`、`/plugins-installed`、`/themes-installed` 均要求管理员/班管。唯一例外是 **`/installed` 登录即可**：客户端要靠它注册第三方应用路由、渲染桌面图标，学生也必须能取。这样「学生看不到市场」不等于「学生用不了市场装的应用」。
 - **`GET /api/market/asset?source=<sourceId>&path=<相对路径>`**：目录里的相对路径图标会被改写成该地址，由服务端代理拉取（路径校验 + 扩展名白名单 + 大小上限；SVG 响应附加禁止内联脚本的 CSP）。本地已安装应用的图标走 `/market-static/<name>/...`。
 - **`POST /api/market/plugin-toggle`** 请求体 `{ "name": "<插件名>", "enabled": true|false }`：暂停后插件后端接口即时下线（请求期闸门，无需重启服务），成功后经核心 WS 广播 `plugin-paused` / `plugin-enabled` 事件。
-- 应用安装 / 卸载成功后同样经 WS 广播 `market_app_changed`（action 为 `installed` / `uninstalled` 等）。市场还提供市场源列表、插件与主题的安装管理端点（`/sources`、`/installed`、`/plugins-installed`、`/themes-installed` 等），此处不逐一列出。
+- 应用安装 / 卸载成功后同样经 WS 广播 `market_app_changed`（action 为 `installed` / `uninstalled` 等）。市场还提供插件与主题的安装管理端点（`/installed`、`/plugins-installed`、`/themes-installed`、`/install-plugin`、`/install-theme` 等），此处不逐一列出。
+- **`/api/market/app-health`** 返回每个已安装应用的 `metrics`（安装/更新次数）、`usage`（人数/次数/最近使用）、`errors`（总数/24h/最近一条）、`process`（进程型后端的运行状态）。这是**本地记账**，不上报中心服务器。
+- **错误上报限流**：每会话每应用前端最多 5 条；服务端每小时最多落 500 条，且每应用只保留最近 200 条。
+
+### 对外查询 API（/api/integrations/v1）
+
+给「机器」用的只读业务接口：班级门户、大屏、外部统计脚本用集成 token 拉数据，不必共享管理员密码。
+
+鉴权头：`X-ClassIntra-Token: <集成 token>`（不是 `Authorization: Bearer`，避免和用户 JWT 混淆）。
+
+| 方法 | 路径 | 所需 scope | 说明 |
+|---|---|---|---|
+| GET | `/api/integrations/v1/whoami` | （无） | 自检：返回名称、scopes、到期时间 |
+| GET | `/api/integrations/v1/users` | `user:read` | 用户列表，支持 `limit`（≤200）/`offset`/`q` |
+| GET | `/api/integrations/v1/users/:userId` | `user:read` | 单个用户 |
+| GET | `/api/integrations/v1/announcements` | `notification:read` | 公告列表，支持 `limit`/`offset`/`type` |
+| GET | `/api/integrations/v1/apps` | `market:read` | 已安装市场应用（含启用状态） |
+| GET | `/api/integrations/v1/stats` | `market:read` | 用户/公告/应用汇总 |
+| POST | `/api/integrations/v1/announcements` | `notification:write` | 发布公告（支持幂等） |
+| POST | `/api/integrations/v1/apps/:name/state` | `app:write` | 启用/停用应用（受保护应用拒绝） |
+
+**写接口的幂等**：带 `Idempotency-Key: <8-128 位>` 时，24 小时内同键重复请求直接回放上次响应（响应头 `X-Idempotent-Replay: 1`），不会重复发公告。写操作会记入管理员日志，`admin_id` 为 `integration:<id>:<name>`，便于区分人/机器。
+
+- 字段白名单：只返回 `user_id` / `net_name` / `real_name` / `level` / `exp` / `status` / `role` / `created_at` / `last_login`，**不含**密码哈希、隐私设置、联系方式、封禁原因。
+- 缺少 scope → `403` 且错误信息点名缺哪个；token 无效/过期 → `401`。
+- 每 token 每分钟 120 次，超限 `429` + `Retry-After`。
+
+```bash
+curl -H "X-ClassIntra-Token: ci_xxx" \
+  "http://<服务器>:9001/api/integrations/v1/users?limit=20&q=张"
+```
+
+### 出站 Webhook（事件推送）
+
+集成签发时填了 `webhookUrl`，且 `scopes` 命中事件所属范围，平台会在事件发生时向该地址 `POST` 一条 JSON。
+
+| 事件 | 所需 scope | 触发时机 | `data` 主要字段 |
+|---|---|---|---|
+| `user.signed_in` | `user:read` | 登录成功 | `user_id` / `net_name` / `at` |
+| `user.signed_out` | `user:read` | 登出 | `user_id` / `at` |
+| `announcement.published` | `notification:write` | 管理员发布公告 | `id` / `title` / `type` / `author_id` |
+| `market.app_installed` | `market:read` | 市场应用安装成功 | `name` / `version` / `source` / `operator` |
+| `market.app_updated` | `market:read` | 市场应用更新成功 | `name` / `version` / `source` / `operator` |
+| `market.app_uninstalled` | `market:read` | 市场应用卸载 | `name` / `operator` |
+| `market.plugin_installed` / `_uninstalled` | `market:read` | 插件安装 / 卸载 | `name` / `version` |
+| `market.theme_installed` / `_uninstalled` | `market:read` | 主题安装 / 卸载 | `id` / `version` |
+| `app.enabled` / `app.disabled` | `app:read` | 管理端启用 / 停用应用（含第三方） | `name` / `label` / `source` / `operator` |
+
+请求头：
+
+```text
+Content-Type: application/json
+X-ClassIntra-Token: <集成 token>
+X-ClassIntra-Event: <事件名>
+X-ClassIntra-Timestamp: <毫秒时间戳>
+X-ClassIntra-Signature: sha256=<hex>
+```
+
+请求体：
+
+```json
+{ "event": "app.disabled", "data": { "name": "pet", "source": "market" }, "timestamp": "1793366426735", "source": "classintra" }
+```
+
+**验签方式**（务必校验，否则任何人都能伪造请求）：
+
+```js
+const crypto = require('crypto');
+
+// secret 只在签发时返回一次，请自行安全保存
+function verify(secret, req) {
+  const secretHash = crypto.createHash('sha256').update(secret).digest('hex');
+  const ts = req.headers['x-classintra-timestamp'];
+  const got = String(req.headers['x-classintra-signature'] || '').replace(/^sha256=/, '');
+  const expected = crypto.createHmac('sha256', secretHash)
+    .update(ts + '.' + req.rawBody)          // 必须是原始字节，不要用 JSON.stringify 重新序列化
+    .digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(got));
+}
+```
+
+::: warning 三个容易踩的点
+- 签名密钥是 **`sha256(secret)`**，不是 secret 本身（服务端只存哈希，不存明文）。
+- 参与签名的是 `timestamp + '.' + 原始请求体`，重新序列化会导致空格/字段顺序变化 → 验签失败。
+- 当前投递**不重试**，失败只记日志；需要可靠送达请在接收端做幂等 + 自行补偿。
+:::
+
+
+**`GET /api/system/relay-status`**（管理员）：排查「另一班登不上 / 看不到另一班数据」的第一手工具。返回每个 `RELAY_SERVERS` 对端的 HTTP 可达性（3 秒超时）、延迟、失败原因，以及本机的 `last_sync_time` 与各类同步水位。对端不可达时 `peers[].reachable=false`、`error` 为 `TIMEOUT` 或 `ECONNREFUSED`。
+
+::: warning 跨班账号的密码不在本班库里
+跨机同步**不复制 `password_hash`**：对方班的用户行同步到本机后密码列为空。
+登录这类账号时，服务端会拿账号密码去对端 `/api/auth/relay-verify` 验证（带 `X-Relay-Secret`）。
+因此对端机器离线时，跨班账号**必然登录失败**——这是架构使然，不是密码错。
+本机此时返回 `code: 503` 并提示「对方班级服务器不可达」，不要把这类失败当成密码错误。
+:::
 
 ## 错误码列表
 

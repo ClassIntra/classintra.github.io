@@ -339,16 +339,35 @@ context.app.onDestroy(function () {
 
 ### `context` 提供的能力
 
-按**五大命名空间**分层：
+按**七个命名空间**分层：
 
 | 命名空间 | 内容 |
 |---|---|
 | `context.appName` | 当前应用名 |
-| `context.app` | `name` / `version` / `manifest` / `config`（读 manifest.config 声明的配置）、`onDestroy(fn)`（逆序执行）、`log` / `warn` / `error`（带 `[app:<name>]` 前缀，便于问题归因） |
-| `context.data` | `api` / `get` / `post`（自动附带登录态的 HTTP）、`realtime`（WS 优先，长轮询兜底）、`storage`（**强制** `ci:app:<name>:` 前缀的命名空间存储） |
-| `context.system` | `user` / `isLoggedIn`、`router` / `route`、`theme`（主题引擎）、`getToken(name)`（读当前主题令牌）、`eventBus`（订阅自动归属 `market:<name>`，销毁时整批退订）、`toast`（`alert` / `confirm` / `prompt`）、`modal`、`navigate(location)`、`goDesktop()`（返回桌面） |
-| `context.ui` | 预制 DOM 片段工厂：`button` / `card` / `list` / `badge` / `segmented` / `toggle` / `searchBar` / `emptyState` / `spinner` / `toast` / `sectionTitle` / `el` |
+| `context.app` | `name` / `version` / `manifest` / `config`（读 manifest.config 声明的配置）、`onDestroy(fn)`（逆序执行）、`onPause(fn)` / `onResume(fn)`（前后台切换）、`log` / `warn` / `error`（带 `[app:<name>]` 前缀，便于问题归因） |
+| `context.data` | `api` / `get` / `post`（自动附带登录态的 HTTP）、`realtime`（WS 优先，长轮询兜底）、`storage`（**强制** `ci:app:<name>:` 前缀的命名空间存储）、`store`（服务端 KV + 文件，跟账号走） |
+| `context.system` | `user` / `isLoggedIn`、`router` / `route`、`theme`（主题引擎）、`getToken(name)`（读当前主题令牌）、`eventBus`（订阅自动归属 `market:<name>`，销毁时整批退订）、`toast`（`alert` / `confirm` / `prompt`）、`modal`、`navigate(location)`、`goDesktop()`（返回桌面）、`notify(title, body)`（通知）、`clipboard.write/read`（剪贴板）、`share(data)`（分享）、`setBadge(n)`（桌面角标）、`openApp(name, params)`（打开其他应用）、`registerSearchProvider(p)`（被全局搜索收录） |
+| `context.device` | `info()`（平台/视口/DPR/UA/在线状态）、`filePicker(options)`（选文件，返回 `File[]`，取消返回空数组）、`camera(options)`（拍照，返回 `Blob`）、`recordAudio(options)`（录音，返回 `{ blob, duration, mimeType }`）、`recordVideo(options)`（录像，返回 `{ blob, duration, mimeType, hasAudio }`）、`vibrate(pattern)`（触觉反馈）、`network()`（在线/网络类型/带宽/延迟）、`screen()`（尺寸/DPR/横竖屏） |
+| `context.theme` | `current`（当前主题 id）、`getToken(name)`、`subscribe(fn)`（返回取消函数，销毁时自动退订）；同时透传 `setTheme` / `toggleColorScheme` 等引擎方法 |
+| `context.ui` | 预制 DOM 片段工厂：`button` / `card` / `list` / `badge` / `segmented` / `toggle` / `searchBar` / `emptyState` / `spinner` / `toast` / `sectionTitle` / `toolbar` / `navbar` / `sheet` / `el` |
 | `context.compat` | `chromeVersion` / `isX5` / `isBelowBaseline`、`has('flex-gap')` 等能力探测——按探测结果降级而非按 UA 猜 |
+
+::: tip 这五项现在是真实现，不是能力目录里的空声明
+`notify` / `clipboard` / `share` / `filePicker` / `camera` 在早期版本只有声明没有实现，
+照着 SDK 文档写会拿到 `undefined`。自 2026-10 起全部落地：
+- `notify`：页面在前台走宿主 Toast，后台且已授权走系统通知；用户拒绝后自动回落，不反复弹权限
+- `clipboard.read`：`navigator.clipboard` 不可用时**明确 reject**（浏览器限制，无法伪造）
+- `share`：没有 Web Share 时复制内容到剪贴板并提示，不会假装成功
+- `filePicker`：取消返回 `[]` 而不是 reject，省掉一条错误分支
+- `camera`：需要 HTTPS 或 localhost；权限拒绝 / 无摄像头会给出中文原因
+:::
+
+
+::: tip 想在控制台里直接摸 context？
+执行 `localStorage.setItem('ci:devtools', '1')` 后重进应用，控制台可用
+`__ciLastContext`（最近创建）或 `__ciContexts['<app>']` 直接调 `data.store` / `compat.has()` / `ui.*` 验证行为。
+验证完记得 `localStorage.removeItem('ci:devtools')`。默认关闭，不给普通用户多一个全局句柄。
+:::
 
 ::: tip `context.ui.*` 返回的是 DOM 片段而非 Vue 组件
 因为第三方不过构建，拿不到 `@vue/compiler`。UI 能力返回原生元素，你直接 `appendChild` 即可。这保证了零构建步骤。
@@ -688,7 +707,7 @@ stmt.all.apply(stmt, values);
 
 主服务负责：
 
-- **spawn 托管**：注入 `PORT` / `CI_APP_NAME` / `CI_APP_DIR` 环境变量；崩溃指数退避自动重启（上限 5 次）
+- **spawn 托管**：注入 `PORT` / `CI_APP_NAME` / `CI_APP_DIR` 环境变量；崩溃线性退避自动重启（上限 5 次，间隔 3s × 次数）
 - **反代**：`/api/<name>/*` → `127.0.0.1:<port>`（仅 HTTP；WebSocket 暂不支持——联机类走 HTTP 轮询）
 - **启停联动**：应用停用/卸载自动终止进程树（Windows `taskkill /T`）；重启服务器自动拉起
 - **端口治理**：安装期探测端口冲突（已装应用声明冲突 / 系统占用都拒装）；只应绑定 `127.0.0.1`
@@ -757,6 +776,12 @@ adjustments: []        # { date, as_day, weeks, note }
 ### 开发循环速查
 
 ```bash
+# 方式 A（推荐，外部开发者）：独立工具链，不需要克隆主仓
+npx classintra-devkit create app <name> [--label 显示名] [--with-backend]
+npx classintra-devkit check .            # manifest + Chrome 80 + 资源回收
+npx classintra-devkit pack . --write <market>/index.json
+
+# 方式 B（平台维护者）：在主仓内开发
 # 微前端应用骨架默认生成在主仓 market-apps/<name>/（--dir 可换位置）；
 # site / service / plugin / theme 直接生成在本地市场源（默认 <项目根>/../market，MARKET_LOCAL_DIR 可覆盖）
 node scripts/create.mjs app <name> [--label 显示名] [--with-backend]
@@ -769,7 +794,263 @@ pnpm review:market market-apps/<name>      # 静态审查五组检查（错误�
 node scripts/market-lifecycle-probe.mjs    # 生命周期回归探针（需本地服务器运行中）
 ```
 
+`classintra-devkit` 是零依赖的独立包，生成物与主仓脚手架同契约（ES5、令牌、`onDestroy`、`cleanup.js`），
+`pack` 产出的 `files`/`hashes` 与安装期校验完全一致。详见 [Devkit 工具链](#devkit-工具链)。
+
 调试工具一览：浏览器控制台 `window.__ciDiagnostics()`（内核/市场状态一站式输出）、管理员打开 `/dev/runtime`（运行时检查器）、服务端日志 `[proc:<name>]` 前缀（独立进程输出）。更多手段见 [调试技巧](./debugging)。
+
+### Devkit 工具链
+
+外部开发者不必克隆主仓。`classintra-devkit` 提供三个命令：
+
+| 命令 | 作用 |
+|---|---|
+| `create app\|site\|service\|plugin\|theme` | 生成开箱即过体检的最小包 |
+| `check [dir]` | manifest + Chrome 80 语法 + 危险 API + 资源回收 + 包体限制；`--json` 可接 CI |
+| `pack [dir] --write index.json` | 生成文件清单与逐文件 sha256，直接合并进市场目录（保留截图/更新日志） |
+
+它拦的正是「装不上」和「装上白屏」两类问题，因此可以直接当发布前的 CI 门禁。
+
+### 云端数据（context.data.store）
+
+`storage` 是本机缓存（卸载即清、不跨设备）；`store` 是**服务端数据**，按 (应用, 用户) 隔离：
+
+```javascript
+// KV：值可以是字符串或任意可 JSON 序列化的对象
+context.data.store.set('settings', { theme: 'dark' }).then(function () {});
+context.data.store.get('settings').then(function (v) { /* 不存在时返回 null */ });
+context.data.store.all().then(function (map) {});     // 一次取回全部
+context.data.store.remove('settings');
+
+// 文件（≤5MB/个，≤50 个/人）
+context.data.store.uploadBlob('avatar.png', file).then(function (meta) {});
+context.data.store.getBlobUrl('avatar.png').then(function (url) {
+  img.src = url;   // 用完不必手动 revoke，context 销毁时会统一释放
+});
+```
+
+限额：单值 64KB、500 键/人/应用。数据**不随卸载删除**（用户重装后还在）；要彻底清理由 `backend/cleanup.js` 显式处理：
+
+```javascript
+// backend/cleanup.js
+module.exports = function (ctx) {
+  ctx.appData.usage();        // { keys, blobs, blobBytes }：先看看占了多少
+  ctx.appData.purge();        // 删除本应用全部 KV 与文件
+  // 其它自建表照旧 DROP
+};
+```
+需要声明能力 `data.store`（安装页会显示「云端数据」）。
+
+### 深度链接（带参数直达应用）
+
+对标 iOS URL Scheme / Android App Links：把 `/<应用路由>?参数` 发给同学，点开就进到对应界面。
+
+```javascript
+// 1) 生成当前界面的链接并分享出去
+var link = location.origin + context.system.route.fullPath +
+  (context.system.route.fullPath.indexOf('?') === -1 ? '?' : '&') + 'room=' + roomId;
+context.system.share({ title: '来一局', text: '房间号 ' + roomId, url: link });
+
+// 2) 目标侧读取参数（刷新、分享、后退都不丢）
+var room = context.system.route.query.room;
+```
+
+- **未登录访问会先跳登录页，登录成功后自动回到原目标**（含参数），不会退化成「登录后到桌面」。
+- 只接受站内相对路径作为回跳目标，`//evil.com` 这类外站地址不会被采纳。
+- 停用的应用无法被链接唤起（跳转前会经过应用管控检查）。
+
+### 接收分享（shareTarget）
+
+对标 Android 的 Share Target / iOS 的 Share Extension：让你的应用出现在系统分享面板里。
+
+**1. 声明**（`manifest.json`）：
+
+```json
+{
+  "capabilities": ["system.shareTarget"],
+  "shareTarget": {
+    "title": "存到我的笔记",
+    "accept": ["text", "url"]
+  }
+}
+```
+
+**2. 接收**（应用内）：
+
+```javascript
+var off = context.app.onShare(function (data) {
+  // data = { title, text, url, from }
+  saveNote({ title: data.title, body: data.text, url: data.url });
+});
+// 应用被卸载时回调自动失效；也可主动 off()
+```
+
+**3. 发出**（别的应用）：
+
+```javascript
+context.system.share({ title: '看看这个', text: '...', url: '...' });
+// 有系统分享面板 → 走系统；否则弹宿主面板，列出所有声明了 shareTarget 的应用
+```
+
+规则：
+
+- 分享内容走 URL query：`ci_share_title` / `ci_share_text` / `ci_share_url` / `ci_share_from`，**可分享、刷新不丢**；应用收到后参数即从地址栏清除，不会重复触发。
+- 若这次启动本就是被分享唤起的，`onShare()` 注册时会**立刻补发一次**，应用不必自己去读 URL。
+- 发起方不会出现在自己的候选列表里（不会「分享给自己」）。
+- 停用的应用不出现在分享面板里。
+
+### 运行时权限（敏感能力授权）
+
+能力披露（`manifest.capabilities`）只是「装前告知」。相机、麦克风、通知、剪贴板读取还要在**首次真正调用时**由使用者点一次「允许」：
+
+| 能力 | 触发点 | 用户拒绝后的行为 |
+|---|---|---|
+| `device.camera` | `device.camera()` | reject（应用需降级） |
+| `device.microphone` | `device.recordAudio()` | reject |
+| `system.notification` | `system.notify()` | **不 reject**，降级为前台 Toast，返回 `{ denied: true }` |
+| `system.clipboard.read` | `system.clipboard.read()` | reject（浏览器不支持时先 reject，不弹无用窗） |
+
+```javascript
+// 不需要自己画授权界面：SDK 会在首次调用时弹系统级授权层
+context.device.recordAudio({ maxDuration: 60 }).then(function (rec) {
+  // rec = { blob, duration, mimeType }
+  return context.data.store.uploadBlob('homework.webm', rec.blob);
+}).catch(function (err) {
+  // 用户拒绝 / 没有麦克风 / 浏览器不支持 → 给出可操作提示，别静默失败
+  context.ui.toast({ text: err.message, variant: 'error' });
+});
+```
+
+规则：
+
+- 授权按 **（应用 × 用户）** 记在服务端，换设备登录不必重新点。
+- 应用必须在 `manifest.capabilities` 声明对应能力，否则服务端拒绝记录（400）——「没声明却来要」不成立。
+- 声明 `system.clipboard` 即覆盖 `system.clipboard.read`（父能力覆盖）。
+- 班管在市场页 **已安装 → 权限** 能看到谁授予了什么，可逐条或整应用撤销；撤销后应用下次调用会重新弹窗。
+- **卸载不删授权记录**：用户重装后不必再点一遍。
+- 浏览器原生权限（站点级）仍存在，但宿主这层是**按应用**的——同源下 A 应用拿到相机，不会让 B 应用静默拥有。
+
+### 媒体采集（拍照 / 录音 / 录像）
+
+三者都自带界面并负责清理（`track.stop()`），应用不必自己画相机 UI，也不会漏关麦克风。
+
+```javascript
+context.device.camera({ facingMode: 'environment' }).then(function (blob) { /* 照片 */ });
+
+context.device.recordAudio({ maxDuration: 120 }).then(function (rec) {
+  // rec = { blob, duration, mimeType }；底部录音条，可停止 / 取消
+});
+
+context.device.recordVideo({ audio: true, maxDuration: 60 }).then(function (rec) {
+  // rec = { blob, duration, mimeType, hasAudio }；带预览窗口
+});
+```
+
+- `maxDuration` 上限：录音 600s（默认 120s），录像 300s（默认 60s），到点自动停。
+- 需要 `HTTPS` 或 `localhost`，否则浏览器不给设备权限。
+- 需要的 manifest 能力：拍照/录像 `device.camera`；录音 `device.microphone`（录像带声音时两项都要）。
+
+### 系统级操作（角标 / 打开应用 / 搜索收录 / 生命周期）
+
+对标 iOS 的 `UIApplicationIconBadgeNumber`、URL Scheme，以及 Android 的 `BadgeDrawable`、`Intent`、App Search：
+
+```javascript
+// 1) 桌面角标：数字、'●' 或空（清除）。写 localStorage，刷新后仍在。
+context.system.setBadge(3);
+context.system.setBadge('');     // 清除
+
+// 2) 打开别的应用并带参数（目标应用用 context.system.route.query 读取）
+context.system.openApp('gomoku', { room: 'A12', from: 'pet' })
+  .then(function (ok) { if (!ok) console.warn('目标应用不可用'); });
+
+// 3) 让应用内容被全局搜索检索（不接也能被搜到应用本身）
+var off = context.system.registerSearchProvider({
+  id: 'notes',
+  category: '我的笔记',
+  search: function (query) {
+    return myNotes.filter(function (n) { return n.title.indexOf(query) !== -1; })
+      .slice(0, 5)
+      .map(function (n) {
+        return {
+          id: n.id,
+          title: n.title,
+          description: n.summary,
+          action: function () { openNote(n.id); }
+        };
+      });
+  }
+});
+// 卸载 / 销毁时自动失效；也可主动 off()
+
+// 4) 前后台生命周期（对应 viewWillDisappear / onPause）
+context.app.onPause(function () { saveDraft(); });
+context.app.onResume(function () { refresh(); });
+```
+
+说明：
+
+- **应用本身**安装后即被全局搜索收录（按名称/显示名匹配），不需要任何代码。
+- 搜索 provider 每次至多返回 10 条，标题会被截断到 80 字；`action` 缺省时点击无动作。
+- `openApp` 的参数走 URL query（可分享、刷新不丢）；复杂对象会被 JSON 序列化。
+- 停用的应用无法被打开或搜到；`canDisable: false` 的受保护应用不受影响。
+- 这三项需要在 manifest 声明能力：`system.badge` / `system.openApp` / `system.search`（安装页会展示）。
+
+### 定时任务（backend.jobs）
+
+应用可以把自己的周期性工作交给宿主，而不是自己 `setInterval`（重启即丢、错过不补）：
+
+```json
+{
+  "backend": {
+    "mountPath": "/api/my-app",
+    "entry": "./backend/routes.js",
+    "jobs": [
+      { "name": "daily-digest", "daily": "07:30", "handler": "./backend/jobs/digest.js" },
+      { "name": "poll", "every": "5m", "handler": "./backend/jobs/poll.js" }
+    ]
+  }
+}
+```
+
+```javascript
+// backend/jobs/digest.js
+module.exports = function (ctx) {
+  ctx.log('开始生成日报');            // 日志前缀 [job:my-app/daily-digest]
+  return doWork(ctx.appName);          // 返回 Promise 即视为异步任务
+};
+```
+
+语义：`every` 最小 60 秒（重启重新计时）；`daily` 为服务器本地时间，启动时若「今天已过点且没跑过」会补跑一次；同一任务不重叠；执行结果写入 `app_jobs`，管理端 `GET /api/market/app-jobs` 可查。
+多实例共库时用 `app_jobs.locked_until` 抢占，同一时刻只有一个实例会执行（锁 5 分钟自动过期）。
+
+### 订阅业务事件（进程内）
+
+应用/插件后端想对「新公告、有人发帖、自己被动停用」做反应，不必轮询数据库：
+
+```javascript
+var bus = require(require('path').resolve(process.cwd(), 'src/core/app-events'));
+
+var off = bus.on('announcement.published', function (payload) {
+  // payload: { id, title, type, author_id }
+}, 'my-app');   // 第三个参数是归属，卸载时按它整批退订
+```
+
+可用事件与出站 Webhook 一致（见 [服务端 API § 出站 Webhook](/api/server#出站-webhook-事件推送)）。
+
+### 应用健康度（本地可观测）
+
+第三方最怕的不是报错，是**不知道有没有人在用、有没有崩**。平台在班级服务器本地提供最小闭环：
+
+- 应用打开时前端上报一次心跳（`POST /api/market/app-usage`），记录人数与次数
+- 运行期异常按应用归因：控制台打 `[app:<name>]` 前缀，并上报 `POST /api/market/app-error`（每会话每应用最多 5 条，服务端每小时上限 500 条）
+- 管理端市场页的「已安装」列表展示：使用人数/次数、错误总数/24h 错误数
+- 管理员可查 `GET /api/market/app-health`
+
+::: info 为什么没有「全局安装量」
+ClassIntra 是自托管模型：每个班级服务器各装各的。没有中心服务器，也就不存在跨校聚合的下载量。
+健康数据是**本班视角**的——这比一个好看但虚构的排行更有用。
+:::
+
 
 market-apps 前端是**直出**：没有构建步骤，保存后刷新浏览器即生效；兼容性靠 [diag compat](./cli#校验器-diag) 与 `review:market` 把关，图标走 [图标满铺规范](#图标满铺规范)。
 

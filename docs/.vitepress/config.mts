@@ -89,6 +89,7 @@ export default defineConfig({
           { text: '插件开发', link: '/development/plugins' },
           { text: '主题开发', link: '/development/themes' },
           { text: 'SDK 参考', link: '/development/sdk' },
+          { text: '学元体系与账本', link: '/development/economy' },
           { text: 'Chrome 80 兼容', link: '/development/chrome-80-compat' },
           { text: '调试技巧', link: '/development/debugging' },
         ]
@@ -176,6 +177,7 @@ export default defineConfig({
           { text: '插件开发', link: '/development/plugins' },
           { text: '主题开发', link: '/development/themes' },
           { text: 'SDK 参考', link: '/development/sdk' },
+          { text: '学元体系与账本', link: '/development/economy' },
           { text: 'Chrome 80 兼容', link: '/development/chrome-80-compat' },
           { text: '调试技巧', link: '/development/debugging' },
         ]

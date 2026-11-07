@@ -288,6 +288,14 @@ node scripts/diag.js compat hello-ci
   apps/hello-ci/...          # 你的应用
 ```
 
+::: tip 不想克隆主仓？用 devkit
+```bash
+npx classintra-devkit pack hello-ci --write ../market/index.json
+```
+它生成的 `files` + `hashes` 与服务端安装校验完全一致，并会保留你已填的截图与更新日志。
+顺手放两张截图（1043×787，深浅各一）到 `apps/hello-ci/screenshots/`，市场详情页才不会是空白。
+:::
+
 ### 8.1 把包放进市场源
 
 ```bash
@@ -350,7 +358,7 @@ git push
 再加一行 `<script src="/ci-adapter.js">` 就能拿用户、主题和系统能力。
 
 **Q4：应用打包多大算合理？**
-默认限制：单应用 ≤300 文件、单文件 ≤15MB、总量 ≤80MB，可在部署端用
+默认限制：单应用 ≤300 文件、单文件 ≤60MB、总量 ≤80MB，可在部署端用
 `MARKET_MAX_FILES` / `MARKET_MAX_FILE_MB` / `MARKET_MAX_TOTAL_MB` 调整。
 大资源建议让部署者手动放到目标机，应用从 `CI_APP_DIR` 相对路径读取。
 

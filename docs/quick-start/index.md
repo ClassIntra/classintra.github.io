@@ -11,7 +11,7 @@ description: ClassIntra 校园内网 WebOS 项目介绍、核心特性、系统�
 
 ClassIntra 是一个为班级教室场景而生的 Web 桌面系统：一台服务器 + 一台平板 = 完整的班级数字平台。无需外网，局域网即可运行。系统采用类 iOS 设计语言，自研 `ios/` 组件库，专为横屏平板（960×600）优化，同时适配桌面浏览器。
 
-技术栈锁定 **Vue 2.7 + Vite 5 + Node.js + Express + SQLite**，通过 `@vitejs/plugin-legacy` 兼容 Chrome 80 老旧教育终端。前后端采用 pnpm workspace monorepo 组织，前端 `client/` 与后端 `server/` 独立可插拔，应用以 `apps/<name>/` 为单位自带 `frontend/` + `backend/` + `manifest.json`。
+技术栈锁定 **Vue 2.7 + Vite 6 + Node.js + Express + SQLite**，通过 `@vitejs/plugin-legacy` 兼容 Chrome 80 老旧教育终端。前后端采用 pnpm workspace monorepo 组织，前端 `client/` 与后端 `server/` 独立可插拔，应用以 `apps/<name>/` 为单位自带 `frontend/` + `backend/` + `manifest.json`。
 
 内置聊天、社区、云盘、音乐、课表、日历、天气、计算器等十余个应用，覆盖班级日常。
 

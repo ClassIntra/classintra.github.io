@@ -94,7 +94,7 @@ features:
 
 ## 为什么选择 ClassIntra？
 
-ClassIntra 为班级教室场景而生 —— 一台服务器 + 一台平板 = 完整的班级数字平台。无需外网，局域网即可运行。基于 **Vue 2.7 + Vite 5** 构建，采用类 iOS 设计语言，专为横屏平板（960×600）优化，同时适配桌面浏览器。
+ClassIntra 为班级教室场景而生 —— 一台服务器 + 一台平板 = 完整的班级数字平台。无需外网，局域网即可运行。基于 **Vue 2.7 + Vite 6** 构建，采用类 iOS 设计语言，专为横屏平板（960×600）优化，同时适配桌面浏览器。
 
 ### 核心优势
 
@@ -112,7 +112,7 @@ ClassIntra 为班级教室场景而生 —— 一台服务器 + 一台平板 = �
 | 层级 | 技术 |
 |------|------|
 | **前端框架** | Vue 2.7 + Vue Router 3 + Vuex 3 |
-| **构建工具** | Vite 5 + `@vitejs/plugin-vue2` + `@vitejs/plugin-legacy` |
+| **构建工具** | Vite 6 + `@vitejs/plugin-vue2` + `@vitejs/plugin-legacy` |
 | **UI 风格** | 类 iOS 设计系统（自研 `ios/` 组件库） |
 | **后端框架** | Express 4 |
 | **数据库** | better-sqlite3（嵌入式，零配置） |

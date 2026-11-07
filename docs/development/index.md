@@ -168,7 +168,7 @@ ClassIntra/
 | Workspace | 路径 | 说明 |
 |-----------|------|------|
 | `server` | `server/` | 后端，Express + better-sqlite3 + ws |
-| `client` | `client/` | 前端，Vue 2.7 + Vite 5 + Vuex |
+| `client` | `client/` | 前端，Vue 2.7 + Vite 6 + Vuex |
 | `apps/*` | `apps/` | 应用包，每个应用一个目录 |
 | `plugins/*` | `plugins/` | 插件包（运行时目录，源码在 market 仓库） |
 | `shared` | `shared/` | 前后端共享代码 |

@@ -100,10 +100,16 @@ window.ClassIntraMarket.define({
 
 - **express 形态**：导出 Router，挂载于 `mountPath`，请求期启停闸门即时生效。
 - **进程形态**（`backend.process`）：宿主 spawn 子进程，注入 `PORT/CI_APP_NAME/CI_APP_DIR`；
-  崩溃指数退避重启（≤5 次）；`mountPath` 反代到 `127.0.0.1:port`（仅 HTTP）；
+  崩溃线性退避重启（≤5 次，间隔 3s × 次数）；`mountPath` 反代到 `127.0.0.1:port`（仅 HTTP）；
   停用/卸载终止进程树；安装期端口冲突检测。
 - **清理钩子**（`backend/cleanup.js`）：`module.exports = function(ctx){}`，卸载时先于删目录执行，
-  失败中止卸载。应用应在此 DROP 自建表/清理数据。
+  失败中止卸载。应用应在此 DROP 自建表/清理数据；`ctx.appData.usage()` 可查应用级存储占用，
+  `ctx.appData.purge()` 可清空 KV 与文件（默认卸载不删数据，留给用户重装）。
+- **定时任务**（`backend.jobs`）：数组，每项 `{ name, every | daily, handler }`。
+  `every` 最小 60 秒；`daily` 为 `HH:MM`（服务器本地时区，错过当天会补跑一次）；
+  `handler` 必须是包内相对路径，导出 `function(ctx)`，`ctx` 含 `appName/jobName/log()`。
+  同一任务不重叠，执行结果写入 `app_jobs`（管理端 `GET /api/market/app-jobs` 可查）。
+  停用应用即撤掉任务；卸载会清掉该应用的进程内事件订阅。
 
 ## 5. 生命周期保证（宿主义务）
 
